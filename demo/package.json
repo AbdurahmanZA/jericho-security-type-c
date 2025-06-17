@@ -1,0 +1,52 @@
+{
+  "name": "jericho-security-demo",
+  "version": "2.1.0",
+  "description": "JERICHO Security Type C - Standalone HTML Demo",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "serve": "npx http-server -p 8080 -c-1",
+    "dev": "npx live-server --port=8080 --no-browser",
+    "validate": "npx html-validate index.html",
+    "lighthouse": "npx lighthouse http://localhost:8080 --output html --output-path ./lighthouse-report.html",
+    "deploy": "gh-pages -d ."
+  },
+  "keywords": [
+    "surveillance",
+    "security",
+    "camera",
+    "rtsp",
+    "hikvision",
+    "south-africa",
+    "demo",
+    "html5",
+    "javascript"
+  ],
+  "author": "JERICHO Security Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AbdurahmanZA/jericho-security-type-c.git",
+    "directory": "demo"
+  },
+  "bugs": {
+    "url": "https://github.com/AbdurahmanZA/jericho-security-type-c/issues"
+  },
+  "homepage": "https://github.com/AbdurahmanZA/jericho-security-type-c/tree/main/demo",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2",
+    "lighthouse": "^11.4.0",
+    "html-validate": "^8.7.4",
+    "gh-pages": "^6.1.0"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "not dead",
+    "> 0.2%",
+    "not ie <= 11"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
