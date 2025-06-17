@@ -1,95 +1,71 @@
 #!/bin/bash
-# JERICHO Security Type C - Ubuntu Production Installation
-# Complete installation with all dependencies and configuration
 
-set -e
+# JERICHO Security Type C - Ubuntu 24.04 Installation Script
+# Automated setup for development and production environments
 
-# Colors for output
+set -euo pipefail
+
+# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_ROOT="/opt/jericho-security"
-LOG_FILE="/var/log/jericho/installation.log"
-REPO_URL="https://github.com/AbdurahmanZA/jericho-security-type-c.git"
+NODE_VERSION="20"
+POSTGRES_VERSION="15"
+REDIS_VERSION="7"
 
-# Logging functions
+# Logging function
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
-info() {
-    echo -e "${BLUE}INFO: $1${NC}"
-    log "INFO: $1"
+warn() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-success() {
-    echo -e "${GREEN}SUCCESS: $1${NC}"
-    log "SUCCESS: $1"
-}
-
-warning() {
-    echo -e "${YELLOW}WARNING: $1${NC}"
-    log "WARNING: $1"
-}
-
-error_exit() {
-    echo -e "${RED}ERROR: $1${NC}" >&2
-    log "ERROR: $1"
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
     exit 1
 }
 
-# Check if running as root
-check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        error_exit "This script must be run as root (use sudo)"
-    fi
+info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
+
+# Check if running as root
+if [[ $EUID -eq 0 ]]; then
+   error "This script should not be run as root. Run as a regular user with sudo privileges."
+fi
 
 # Check Ubuntu version
-check_ubuntu_version() {
-    if [ ! -f /etc/os-release ]; then
-        error_exit "Cannot determine OS version"
+check_ubuntu() {
+    if ! lsb_release -d | grep -q "Ubuntu 24.04"; then
+        warn "This script is designed for Ubuntu 24.04. Current version: $(lsb_release -d | cut -f2)"
+        read -p "Continue anyway? (y/N): " -r
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
     fi
-    
-    . /etc/os-release
-    
-    if [ "$ID" != "ubuntu" ]; then
-        error_exit "This script is for Ubuntu only. Detected: $ID"
-    fi
-    
-    # Check for supported versions
-    case "$VERSION_ID" in
-        "20.04"|"22.04"|"24.04")
-            info "Ubuntu $VERSION_ID detected - supported"
-            ;;
-        *)
-            warning "Ubuntu $VERSION_ID may not be fully tested"
-            ;;
-    esac
 }
 
-# System update
-update_system() {
-    info "Updating system packages..."
-    
-    export DEBIAN_FRONTEND=noninteractive
-    
-    apt-get update
-    apt-get upgrade -y
-    
-    success "System updated"
+# Create necessary directories
+create_directories() {
+    log "Creating necessary directories..."
+    mkdir -p ~/jericho-security-logs
+    mkdir -p ~/jericho-security-uploads
+    mkdir -p ~/jericho-security-backups
 }
 
 # Install system dependencies
 install_system_dependencies() {
-    info "Installing system dependencies..."
-    
-    # Essential packages
-    apt-get install -y \
+    log "Updating system packages..."
+    sudo apt update && sudo apt upgrade -y
+
+    log "Installing essential packages..."
+    sudo apt install -y \
         curl \
         wget \
         git \
@@ -100,647 +76,386 @@ install_system_dependencies() {
         gnupg \
         lsb-release \
         unzip \
-        supervisor \
+        vim \
         htop \
-        nano \
-        vim
-    
-    success "System dependencies installed"
+        net-tools \
+        ufw
+
+    log "System dependencies installed successfully!"
 }
 
 # Install Node.js
 install_nodejs() {
-    info "Installing Node.js 20.x..."
+    log "Installing Node.js ${NODE_VERSION}..."
     
-    # Add NodeSource repository
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    # Remove existing Node.js if present
+    sudo apt remove -y nodejs npm 2>/dev/null || true
+    
+    # Install NodeSource repository
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | sudo -E bash -
     
     # Install Node.js
-    apt-get install -y nodejs
-    
-    # Install PM2 globally
-    npm install -g pm2
+    sudo apt install -y nodejs
     
     # Verify installation
-    node_version=$(node --version)
-    npm_version=$(npm --version)
-    pm2_version=$(pm2 --version)
+    NODE_VER=$(node --version)
+    NPM_VER=$(npm --version)
     
-    info "Node.js version: $node_version"
-    info "npm version: $npm_version"
-    info "PM2 version: $pm2_version"
+    log "Node.js installed: ${NODE_VER}"
+    log "npm installed: ${NPM_VER}"
     
-    success "Node.js and PM2 installed"
+    # Install global packages
+    sudo npm install -g pm2 nodemon
+    
+    log "Global npm packages installed: pm2, nodemon"
 }
 
 # Install PostgreSQL
 install_postgresql() {
-    info "Installing PostgreSQL 15..."
+    log "Installing PostgreSQL ${POSTGRES_VERSION}..."
     
-    # Install PostgreSQL
-    apt-get install -y postgresql postgresql-contrib postgresql-client
+    sudo apt install -y postgresql postgresql-contrib postgresql-client
     
     # Start and enable PostgreSQL
-    systemctl start postgresql
-    systemctl enable postgresql
+    sudo systemctl start postgresql
+    sudo systemctl enable postgresql
     
-    # Create database and user for JERICHO
+    # Create database and user
+    log "Setting up JERICHO database..."
+    
     sudo -u postgres psql << EOF
-CREATE DATABASE jericho_security;
-CREATE USER jericho WITH ENCRYPTED PASSWORD 'jericho_secure_2024';
+CREATE USER jericho WITH PASSWORD 'jericho_secure_2024';
+CREATE DATABASE jericho_security OWNER jericho;
 GRANT ALL PRIVILEGES ON DATABASE jericho_security TO jericho;
 ALTER USER jericho CREATEDB;
 \q
 EOF
-    
-    # Configure PostgreSQL for local connections
-    PG_VERSION=$(sudo -u postgres psql -t -c "SELECT version();" | grep -oP 'PostgreSQL \K[0-9]+')
-    PG_CONFIG_DIR="/etc/postgresql/$PG_VERSION/main"
-    
-    # Allow local connections
-    sed -i "s/#listen_addresses = 'localhost'/listen_addresses = 'localhost'/" "$PG_CONFIG_DIR/postgresql.conf"
-    
-    # Configure authentication
-    echo "local   jericho_security    jericho                                 md5" >> "$PG_CONFIG_DIR/pg_hba.conf"
-    echo "host    jericho_security    jericho         127.0.0.1/32            md5" >> "$PG_CONFIG_DIR/pg_hba.conf"
-    
-    # Restart PostgreSQL
-    systemctl restart postgresql
-    
-    success "PostgreSQL installed and configured"
+
+    # Test connection
+    if PGPASSWORD='jericho_secure_2024' psql -h localhost -U jericho -d jericho_security -c "SELECT 1;" > /dev/null 2>&1; then
+        log "PostgreSQL database configured successfully!"
+    else
+        error "PostgreSQL database configuration failed!"
+    fi
 }
 
 # Install Redis
 install_redis() {
-    info "Installing Redis..."
+    log "Installing Redis..."
     
-    apt-get install -y redis-server
+    sudo apt install -y redis-server
     
     # Configure Redis
-    sed -i 's/^supervised no/supervised systemd/' /etc/redis/redis.conf
-    sed -i 's/^# maxmemory <bytes>/maxmemory 256mb/' /etc/redis/redis.conf
-    sed -i 's/^# maxmemory-policy noeviction/maxmemory-policy allkeys-lru/' /etc/redis/redis.conf
+    sudo sed -i 's/supervised no/supervised systemd/' /etc/redis/redis.conf
+    sudo sed -i 's/# maxmemory <bytes>/maxmemory 256mb/' /etc/redis/redis.conf
+    sudo sed -i 's/# maxmemory-policy noeviction/maxmemory-policy allkeys-lru/' /etc/redis/redis.conf
     
     # Start and enable Redis
-    systemctl restart redis-server
-    systemctl enable redis-server
+    sudo systemctl restart redis-server
+    sudo systemctl enable redis-server
     
-    success "Redis installed and configured"
+    # Test Redis
+    if redis-cli ping | grep -q "PONG"; then
+        log "Redis installed and configured successfully!"
+    else
+        error "Redis installation failed!"
+    fi
 }
 
 # Install FFmpeg
 install_ffmpeg() {
-    info "Installing FFmpeg with hardware acceleration..."
+    log "Installing FFmpeg for video processing..."
     
-    # Add PPA for latest FFmpeg
-    add-apt-repository -y ppa:savoury1/ffmpeg4
-    apt-get update
+    sudo apt install -y ffmpeg
     
-    # Install FFmpeg and related tools
-    apt-get install -y \
-        ffmpeg \
-        libavcodec-extra \
-        libavdevice-dev \
-        libavfilter-dev \
-        libavformat-dev \
-        libavutil-dev \
-        libswresample-dev \
-        libswscale-dev \
-        v4l-utils \
-        gstreamer1.0-tools \
-        gstreamer1.0-plugins-base \
-        gstreamer1.0-plugins-good \
-        gstreamer1.0-plugins-bad \
-        gstreamer1.0-plugins-ugly
-    
-    # Verify FFmpeg installation
-    ffmpeg_version=$(ffmpeg -version | head -n1)
-    info "FFmpeg installed: $ffmpeg_version"
-    
-    success "FFmpeg and video tools installed"
+    # Verify installation
+    FFMPEG_VER=$(ffmpeg -version | head -n1)
+    log "FFmpeg installed: ${FFMPEG_VER}"
 }
 
 # Install Nginx
 install_nginx() {
-    info "Installing and configuring Nginx..."
+    log "Installing Nginx web server..."
     
-    apt-get install -y nginx
-    
-    # Enable required modules
-    a2enmod rewrite 2>/dev/null || true
-    a2enmod mime 2>/dev/null || true
-    a2enmod headers 2>/dev/null || true
-    a2enmod ssl 2>/dev/null || true
+    sudo apt install -y nginx
     
     # Start and enable Nginx
-    systemctl start nginx
-    systemctl enable nginx
+    sudo systemctl start nginx
+    sudo systemctl enable nginx
     
-    success "Nginx installed"
+    log "Nginx installed and started!"
 }
 
-# Create system user
-create_system_user() {
-    info "Creating system user and directories..."
+# Configure firewall
+configure_firewall() {
+    log "Configuring UFW firewall..."
     
-    # Create www-data user if it doesn't exist (usually exists on Ubuntu)
-    if ! id "www-data" &>/dev/null; then
-        useradd -r -s /bin/false www-data
+    # Enable UFW
+    sudo ufw --force enable
+    
+    # Allow SSH
+    sudo ufw allow ssh
+    
+    # Allow HTTP and HTTPS
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    
+    # Allow JERICHO backend port
+    sudo ufw allow 5000/tcp
+    
+    # Allow frontend development port
+    sudo ufw allow 5173/tcp
+    
+    # Allow PostgreSQL (only from localhost)
+    sudo ufw allow from 127.0.0.1 to any port 5432
+    
+    # Allow Redis (only from localhost)
+    sudo ufw allow from 127.0.0.1 to any port 6379
+    
+    log "Firewall configured successfully!"
+}
+
+# Clone JERICHO repository
+clone_repository() {
+    log "Cloning JERICHO Security Type C repository..."
+    
+    # Remove existing directory if present
+    if [[ -d "jericho-security-type-c" ]]; then
+        warn "Existing jericho-security-type-c directory found. Removing..."
+        rm -rf jericho-security-type-c
     fi
-    
-    # Create project directories
-    mkdir -p "$PROJECT_ROOT"
-    mkdir -p /opt/jericho-releases
-    mkdir -p /opt/jericho-backups
-    mkdir -p /var/log/jericho
-    mkdir -p /var/lib/jericho/hls
-    mkdir -p /var/lib/jericho/snapshots
-    
-    # Set ownership
-    chown -R www-data:www-data "$PROJECT_ROOT"
-    chown -R www-data:www-data /opt/jericho-releases
-    chown -R www-data:www-data /opt/jericho-backups
-    chown -R www-data:www-data /var/log/jericho
-    chown -R www-data:www-data /var/lib/jericho
-    
-    # Set permissions
-    chmod 755 "$PROJECT_ROOT"
-    chmod 755 /opt/jericho-releases
-    chmod 755 /opt/jericho-backups
-    chmod 755 /var/log/jericho
-    chmod 755 /var/lib/jericho
-    
-    success "System user and directories created"
-}
-
-# Clone and setup application
-setup_application() {
-    info "Downloading JERICHO Security Type C..."
-    
-    # Remove existing installation
-    rm -rf "$PROJECT_ROOT"/*
     
     # Clone repository
-    if ! git clone "$REPO_URL" /tmp/jericho-install; then
-        error_exit "Failed to clone repository from $REPO_URL"
-    fi
+    git clone https://github.com/AbdurahmanZA/jericho-security-type-c.git
+    cd jericho-security-type-c
     
-    # Copy files
-    cp -r /tmp/jericho-install/* "$PROJECT_ROOT/"
+    # Check out main branch and pull latest
+    git checkout main
+    git pull origin main
     
-    # Set ownership
-    chown -R www-data:www-data "$PROJECT_ROOT"
-    
-    # Clean up
-    rm -rf /tmp/jericho-install
-    
-    success "Application downloaded and copied"
+    log "Repository cloned successfully!"
 }
 
 # Install application dependencies
 install_app_dependencies() {
-    info "Installing application dependencies..."
+    log "Installing application dependencies..."
     
-    cd "$PROJECT_ROOT"
+    # Install backend dependencies
+    cd backend
+    npm install
     
-    # Frontend dependencies
-    if [ -d "frontend" ]; then
-        info "Installing frontend dependencies..."
-        cd frontend
-        sudo -u www-data npm ci --production
-        sudo -u www-data npm run build
-        cd ..
-    fi
+    # Copy environment file
+    cp .env.example .env
+    log "Backend dependencies installed!"
     
-    # Backend dependencies
-    if [ -d "backend" ]; then
-        info "Installing backend dependencies..."
-        cd backend
-        sudo -u www-data npm ci --production
-        cd ..
-    fi
+    # Install frontend dependencies
+    cd ../frontend
+    npm install
+    log "Frontend dependencies installed!"
     
-    success "Application dependencies installed"
+    cd ..
 }
 
-# Setup database schema
-setup_database_schema() {
-    info "Setting up database schema..."
+# Setup environment files
+setup_environment() {
+    log "Setting up environment configuration..."
     
-    if [ -f "$PROJECT_ROOT/backend/migrations/001_initial_schema.sql" ]; then
-        sudo -u postgres psql jericho_security < "$PROJECT_ROOT/backend/migrations/001_initial_schema.sql"
-        success "Database schema created"
-    else
-        warning "Database migration file not found"
-    fi
-}
-
-# Create configuration files
-create_config_files() {
-    info "Creating configuration files..."
+    # Get local IP address
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
     
-    # Environment configuration
-    cat > "$PROJECT_ROOT/.env" << EOF
-NODE_ENV=production
+    # Update backend .env file
+    cd backend
+    cat > .env << EOF
+NODE_ENV=development
 PORT=5000
 
-# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=jericho_security
 DB_USER=jericho
 DB_PASSWORD=jericho_secure_2024
 
-# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=
 
-# JWT
-JWT_SECRET=$(openssl rand -hex 32)
-JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+JWT_SECRET=jericho_jwt_secret_$(openssl rand -hex 16)
+JWT_EXPIRE=24h
 
-# File paths
-HLS_PATH=/var/lib/jericho/hls
-SNAPSHOTS_PATH=/var/lib/jericho/snapshots
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=50MB
 
-# Logging
+RTSP_PORT=8554
+HLS_SEGMENT_TIME=2
+HLS_LIST_SIZE=3
+
+BCRYPT_ROUNDS=12
+RATE_LIMIT_WINDOW=15
+RATE_LIMIT_MAX=100
+
+HIKVISION_TIMEOUT=5000
+HIKVISION_RETRY_ATTEMPTS=3
+
 LOG_LEVEL=info
-LOG_FILE=/var/log/jericho/application.log
+LOG_FILE=logs/jericho.log
+
+FRONTEND_URL=http://localhost:5173
 EOF
+
+    # Setup frontend .env file
+    cd ../frontend
+    cat > .env << EOF
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_WS_URL=ws://localhost:5000
+VITE_APP_NAME=JERICHO Security Type C
+VITE_APP_VERSION=2.0.0
+EOF
+
+    cd ..
     
-    # PM2 Ecosystem configuration
-    cat > "$PROJECT_ROOT/ecosystem.config.js" << EOF
+    log "Environment files configured!"
+    log "Local access: http://localhost:5173"
+    log "Network access: http://${LOCAL_IP}:5173"
+}
+
+# Test installation
+test_installation() {
+    log "Testing installation..."
+    
+    # Test Node.js
+    node --version > /dev/null && log "✓ Node.js working"
+    
+    # Test npm
+    npm --version > /dev/null && log "✓ npm working"
+    
+    # Test PostgreSQL
+    PGPASSWORD='jericho_secure_2024' psql -h localhost -U jericho -d jericho_security -c "SELECT 1;" > /dev/null 2>&1 && log "✓ PostgreSQL working"
+    
+    # Test Redis
+    redis-cli ping | grep -q "PONG" && log "✓ Redis working"
+    
+    # Test FFmpeg
+    ffmpeg -version > /dev/null 2>&1 && log "✓ FFmpeg working"
+    
+    # Test PM2
+    pm2 --version > /dev/null && log "✓ PM2 working"
+    
+    log "Installation test completed successfully!"
+}
+
+# Start services
+start_services() {
+    log "Starting JERICHO Security services..."
+    
+    # Create PM2 ecosystem file
+    cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [
     {
       name: 'jericho-backend',
-      script: './backend/server.js',
-      cwd: '$PROJECT_ROOT',
-      user: 'www-data',
+      script: 'backend/server.js',
       env: {
-        NODE_ENV: 'production',
-        PORT: 5000
+        NODE_ENV: 'development'
       },
-      instances: 1,
-      exec_mode: 'fork',
-      watch: false,
+      env_production: {
+        NODE_ENV: 'production'
+      },
+      watch: ['backend'],
+      ignore_watch: ['node_modules', 'logs', 'uploads'],
+      log_file: 'logs/combined.log',
+      out_file: 'logs/out.log',
+      error_file: 'logs/error.log',
       max_memory_restart: '1G',
-      error_file: '/var/log/jericho/pm2-error.log',
-      out_file: '/var/log/jericho/pm2-out.log',
-      log_file: '/var/log/jericho/pm2.log',
-      time: true,
-      autorestart: true,
-      max_restarts: 10,
-      min_uptime: '10s'
+      restart_delay: 5000
     }
   ]
 };
 EOF
+
+    # Create logs directory
+    mkdir -p logs
     
-    # Set ownership
-    chown www-data:www-data "$PROJECT_ROOT/.env"
-    chown www-data:www-data "$PROJECT_ROOT/ecosystem.config.js"
+    # Start backend with PM2
+    pm2 start ecosystem.config.js
+    pm2 save
     
-    success "Configuration files created"
+    # Setup PM2 startup
+    PM2_STARTUP=$(pm2 startup | tail -n 1)
+    eval $PM2_STARTUP 2>/dev/null || true
+    
+    log "Backend started with PM2!"
+    
+    # Start frontend in development mode (background)
+    cd frontend
+    nohup npm run dev > ../logs/frontend.log 2>&1 &
+    FRONTEND_PID=$!
+    echo $FRONTEND_PID > ../logs/frontend.pid
+    
+    cd ..
+    
+    log "Frontend started in development mode!"
 }
 
-# Setup systemd services
-setup_systemd_services() {
-    info "Setting up systemd services..."
+# Display final information
+display_final_info() {
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
     
-    # JERICHO main service
-    cat > /etc/systemd/system/jericho-security.service << EOF
-[Unit]
-Description=JERICHO Security System
-After=network.target postgresql.service redis-server.service
-Wants=postgresql.service redis-server.service
-
-[Service]
-Type=forking
-User=www-data
-Group=www-data
-WorkingDirectory=$PROJECT_ROOT
-Environment=NODE_ENV=production
-ExecStart=/usr/bin/pm2 start ecosystem.config.js --env production
-ExecReload=/usr/bin/pm2 reload all
-ExecStop=/usr/bin/pm2 stop all
-Restart=always
-RestartSec=10
-TimeoutStopSec=30
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    # Reload systemd and enable service
-    systemctl daemon-reload
-    systemctl enable jericho-security
-    
-    success "Systemd services configured"
-}
-
-# Configure Nginx reverse proxy
-configure_nginx() {
-    info "Configuring Nginx reverse proxy..."
-    
-    # Remove default site
-    rm -f /etc/nginx/sites-enabled/default
-    
-    # Create JERICHO site configuration
-    cat > /etc/nginx/sites-available/jericho << 'EOF'
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
-    
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-    
-    # Frontend static files
-    location / {
-        root /opt/jericho-security/frontend/dist;
-        try_files $uri $uri/ /index.html;
-        
-        # Cache static assets
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-    }
-    
-    # API endpoints
-    location /api/ {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 75s;
-    }
-    
-    # WebSocket connections
-    location /ws {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # HLS video streams
-    location /hls/ {
-        alias /var/lib/jericho/hls/;
-        
-        # CORS for video streaming
-        add_header Access-Control-Allow-Origin * always;
-        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Content-Type" always;
-        
-        # M3U8 playlist cache control
-        location ~* \.m3u8$ {
-            expires -1;
-            add_header Cache-Control "no-cache, no-store, must-revalidate";
-            add_header Pragma "no-cache";
-        }
-        
-        # TS segments cache control
-        location ~* \.ts$ {
-            expires 1h;
-            add_header Cache-Control "public";
-        }
-    }
-    
-    # Camera snapshots
-    location /snapshots/ {
-        alias /var/lib/jericho/snapshots/;
-        expires 1d;
-        add_header Cache-Control "public";
-    }
-    
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-        add_header Content-Type text/plain;
-    }
-    
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/json
-        application/javascript
-        application/xml+rss
-        application/atom+xml
-        image/svg+xml;
-}
-EOF
-    
-    # Enable site
-    ln -sf /etc/nginx/sites-available/jericho /etc/nginx/sites-enabled/
-    
-    # Test configuration
-    nginx -t
-    
-    # Restart Nginx
-    systemctl restart nginx
-    
-    success "Nginx configured and restarted"
-}
-
-# Setup log rotation
-setup_log_rotation() {
-    info "Setting up log rotation..."
-    
-    cat > /etc/logrotate.d/jericho << EOF
-/var/log/jericho/*.log {
-    daily
-    missingok
-    rotate 30
-    compress
-    delaycompress
-    notifempty
-    create 644 www-data www-data
-    postrotate
-        sudo -u www-data pm2 reloadLogs
-    endscript
-}
-EOF
-    
-    success "Log rotation configured"
-}
-
-# Setup firewall
-setup_firewall() {
-    info "Configuring firewall..."
-    
-    # Install UFW if not present
-    apt-get install -y ufw
-    
-    # Reset firewall
-    ufw --force reset
-    
-    # Default policies
-    ufw default deny incoming
-    ufw default allow outgoing
-    
-    # Allow SSH
-    ufw allow ssh
-    
-    # Allow HTTP and HTTPS
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    
-    # Enable firewall
-    ufw --force enable
-    
-    success "Firewall configured"
-}
-
-# Final system checks
-final_checks() {
-    info "Running final system checks..."
-    
-    # Start all services
-    systemctl start jericho-security
-    
-    # Wait for services to start
-    sleep 10
-    
-    # Check service status
-    if systemctl is-active --quiet jericho-security; then
-        success "JERICHO Security service is running"
-    else
-        warning "JERICHO Security service failed to start"
-    fi
-    
-    # Check web server
-    if curl -s http://localhost/ > /dev/null; then
-        success "Web server is responding"
-    else
-        warning "Web server may not be accessible"
-    fi
-    
-    # Check database connection
-    if sudo -u postgres psql -c '\q' jericho_security 2>/dev/null; then
-        success "Database is accessible"
-    else
-        warning "Database connection failed"
-    fi
-    
-    success "Final checks completed"
-}
-
-# Print installation summary
-print_summary() {
     echo
-    echo "======================================"
-    echo "  JERICHO Security Type C Installed  "
-    echo "======================================"
+    echo "============================================="
+    echo "🛡️  JERICHO Security Type C Installation Complete!"
+    echo "============================================="
     echo
-    echo "Installation completed successfully!"
+    echo "📊 System Information:"
+    echo "   • Operating System: $(lsb_release -d | cut -f2)"
+    echo "   • Node.js Version: $(node --version)"
+    echo "   • PostgreSQL: Running on port 5432"
+    echo "   • Redis: Running on port 6379"
+    echo "   • Local IP: ${LOCAL_IP}"
     echo
-    echo "Access Information:"
-    echo "  Web Interface: http://$(hostname -I | awk '{print $1}')/"
-    echo "  Local Access:  http://localhost/"
+    echo "🌐 Access URLs:"
+    echo "   • Frontend (Local): http://localhost:5173"
+    echo "   • Frontend (Network): http://${LOCAL_IP}:5173"
+    echo "   • Backend API: http://localhost:5000"
+    echo "   • Health Check: http://localhost:5000/health"
     echo
-    echo "Service Management:"
-    echo "  Status:   sudo systemctl status jericho-security"
-    echo "  Start:    sudo systemctl start jericho-security"
-    echo "  Stop:     sudo systemctl stop jericho-security"
-    echo "  Restart:  sudo systemctl restart jericho-security"
+    echo "🔧 Management Commands:"
+    echo "   • View backend logs: pm2 logs jericho-backend"
+    echo "   • View frontend logs: tail -f logs/frontend.log"
+    echo "   • Restart backend: pm2 restart jericho-backend"
+    echo "   • Stop all services: pm2 stop all"
+    echo "   • Check PM2 status: pm2 status"
     echo
-    echo "Process Management (PM2):"
-    echo "  Status:   sudo -u www-data pm2 status"
-    echo "  Logs:     sudo -u www-data pm2 logs"
-    echo "  Monitor:  sudo -u www-data pm2 monit"
+    echo "📁 Project Directory: $(pwd)"
     echo
-    echo "Log Files:"
-    echo "  System:   /var/log/jericho/"
-    echo "  PM2:      sudo -u www-data pm2 logs"
-    echo "  Nginx:    /var/log/nginx/"
-    echo
-    echo "Configuration:"
-    echo "  Project:  $PROJECT_ROOT"
-    echo "  Config:   $PROJECT_ROOT/.env"
-    echo "  PM2:      $PROJECT_ROOT/ecosystem.config.js"
-    echo
-    echo "Database:"
-    echo "  Name:     jericho_security"
-    echo "  User:     jericho"
-    echo "  Host:     localhost:5432"
-    echo
-    echo "Version Control:"
-    echo "  Create:   sudo $PROJECT_ROOT/scripts/version-control.sh create v2.0.1"
-    echo "  Deploy:   sudo $PROJECT_ROOT/scripts/deploy.sh v2.0.1"
-    echo "  Rollback: sudo $PROJECT_ROOT/scripts/rollback.sh v2.0.0"
-    echo
-    echo "Next Steps:"
-    echo "1. Access the web interface to configure cameras"
-    echo "2. Set up your RTSP camera streams"
-    echo "3. Configure motion detection settings"
-    echo "4. Test the system functionality"
-    echo
-    echo "For troubleshooting, check:"
-    echo "  sudo journalctl -u jericho-security -f"
-    echo "  sudo -u www-data pm2 logs"
+    echo "✅ Installation completed successfully!"
+    echo "✅ Services are running and ready for development!"
     echo
 }
 
 # Main installation function
 main() {
-    echo "JERICHO Security Type C - Ubuntu Installation"
     echo "============================================="
+    echo "🛡️  JERICHO Security Type C Installer"
+    echo "============================================="
+    echo "Starting automated installation for Ubuntu 24.04..."
     echo
     
-    # Create log directory
-    mkdir -p "$(dirname "$LOG_FILE")"
-    
-    info "Starting installation..."
-    
-    check_root
-    check_ubuntu_version
-    update_system
+    check_ubuntu
+    create_directories
     install_system_dependencies
     install_nodejs
     install_postgresql
     install_redis
     install_ffmpeg
     install_nginx
-    create_system_user
-    setup_application
+    configure_firewall
+    clone_repository
     install_app_dependencies
-    setup_database_schema
-    create_config_files
-    setup_systemd_services
-    configure_nginx
-    setup_log_rotation
-    setup_firewall
-    final_checks
-    
-    print_summary
-    
-    success "JERICHO Security Type C installation completed!"
+    setup_environment
+    test_installation
+    start_services
+    display_final_info
 }
 
-# Execute main function
+# Run main function
 main "$@"
