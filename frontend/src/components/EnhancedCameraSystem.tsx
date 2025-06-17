@@ -32,6 +32,36 @@ import {
   Loader2
 } from 'lucide-react';
 
+// API Configuration
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+
+// API Helper Functions
+const api = {
+  async get(endpoint: string) {
+    const response = await fetch(`${API_BASE_URL}/api${endpoint}`);
+    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    return response.json();
+  },
+
+  async post(endpoint: string, data: any) {
+    const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    return response.json();
+  },
+
+  async delete(endpoint: string) {
+    const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    return response.json();
+  }
+};
+
 // Types
 interface CameraSource {
   id: string;
@@ -41,7 +71,7 @@ interface CameraSource {
   port?: number;
   username?: string;
   password?: string;
-  rtspUrl?: string;
+  rtsp_url?: string;
   channels?: CameraChannel[];
   status: 'connected' | 'disconnected' | 'connecting' | 'error';
   enabled: boolean;
@@ -62,13 +92,15 @@ interface CameraChannel {
 
 interface DisplayedCamera {
   id: string;
-  sourceId: string;
-  channelId: string;
+  source_id: string;
+  channel_id: string;
   name: string;
-  rtspUrl: string;
-  position: number; // Grid position
-  screen: number; // 1 for main, 2+ for overflow
-  isActive: boolean;
+  rtsp_url: string;
+  position: number;
+  screen: number;
+  is_active: boolean;
+  source_name?: string;
+  source_type?: string;
 }
 
 const EnhancedCameraSystem: React.FC = () => {
@@ -82,6 +114,7 @@ const EnhancedCameraSystem: React.FC = () => {
   const [addCameraOpen, setAddCameraOpen] = useState(false);
   const [selectedSource, setSelectedSource] = useState<CameraSource | null>(null);
   const [isDiscovering, setIsDiscovering] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [newCameraData, setNewCameraData] = useState({
     name: '',
     type: 'rtsp' as const,
@@ -92,36 +125,55 @@ const EnhancedCameraSystem: React.FC = () => {
     rtspUrl: ''
   });
 
-  // Load saved configuration
+  // Load data from backend on component mount
   useEffect(() => {
-    loadSavedConfiguration();
+    loadCameraData();
   }, []);
 
-  const loadSavedConfiguration = () => {
-    const savedSources = localStorage.getItem('jericho-camera-sources');
-    const savedDisplayed = localStorage.getItem('jericho-displayed-cameras');
-    const savedLayout = localStorage.getItem('jericho-camera-layout');
+  const loadCameraData = async () => {
+    try {
+      setIsLoading(true);
+      const [sourcesResponse, displayResponse] = await Promise.all([
+        api.get('/cameras/sources'),
+        api.get('/cameras/display')
+      ]);
 
-    if (savedSources) {
-      setCameraSources(JSON.parse(savedSources));
-    }
-    if (savedDisplayed) {
-      setDisplayedCameras(JSON.parse(savedDisplayed));
-    }
-    if (savedLayout) {
-      setCurrentLayout(parseInt(savedLayout));
+      setCameraSources(sourcesResponse);
+      setDisplayedCameras(displayResponse);
+
+      // Load saved layout from localStorage (for UI state)
+      const savedLayout = localStorage.getItem('jericho-camera-layout');
+      if (savedLayout) {
+        setCurrentLayout(parseInt(savedLayout));
+      }
+    } catch (error) {
+      console.error('Failed to load camera data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load camera data from server.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const saveConfiguration = () => {
-    localStorage.setItem('jericho-camera-sources', JSON.stringify(cameraSources));
-    localStorage.setItem('jericho-displayed-cameras', JSON.stringify(displayedCameras));
-    localStorage.setItem('jericho-camera-layout', currentLayout.toString());
-    
-    toast({
-      title: "Layout Saved",
-      description: "Camera configuration has been saved successfully.",
-    });
+  const saveConfiguration = async () => {
+    try {
+      // Save layout to localStorage (UI state)
+      localStorage.setItem('jericho-camera-layout', currentLayout.toString());
+      
+      toast({
+        title: "Layout Saved",
+        description: "Camera layout configuration has been saved.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save configuration.",
+        variant: "destructive"
+      });
+    }
   };
 
   const addCameraSource = async () => {
@@ -134,128 +186,74 @@ const EnhancedCameraSystem: React.FC = () => {
       return;
     }
 
-    const newSource: CameraSource = {
-      id: `camera_${Date.now()}`,
-      ...newCameraData,
-      channels: [],
-      status: 'disconnected',
-      enabled: true
-    };
-
-    // For RTSP URL type, create a simple channel
-    if (newCameraData.type === 'rtsp' && newCameraData.rtspUrl) {
-      newSource.channels = [{
-        id: `${newSource.id}_ch1`,
-        name: newCameraData.name,
-        channelNumber: 1,
-        rtspUrl: newCameraData.rtspUrl,
-        mainStream: newCameraData.rtspUrl,
-        subStream: newCameraData.rtspUrl,
-        enabled: true,
-        addedToDisplay: false,
-        resolution: '1920x1080',
-        fps: 25
-      }];
-    }
-
-    setCameraSources(prev => [...prev, newSource]);
-    setAddCameraOpen(false);
-    resetNewCameraData();
-
-    // Auto-discover channels for NVR/DVR/HikConnect
-    if (['nvr', 'dvr', 'hikconnect'].includes(newCameraData.type)) {
-      await discoverChannels(newSource);
-    }
-
-    toast({
-      title: "Camera Source Added",
-      description: `${newCameraData.name} has been added successfully.`,
-    });
-  };
-
-  const discoverChannels = async (source: CameraSource) => {
-    setIsDiscovering(true);
-    
     try {
-      // Call backend API to discover channels
-      const response = await fetch('/api/cameras/discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: source.type,
-          ip: source.ip,
-          port: source.port,
-          username: source.username,
-          password: source.password
-        })
-      });
+      setIsDiscovering(true);
 
-      if (response.ok) {
-        const discoveredChannels = await response.json();
-        
-        // Update source with discovered channels
-        setCameraSources(prev => prev.map(s => 
-          s.id === source.id 
-            ? { ...s, channels: discoveredChannels, status: 'connected' }
-            : s
-        ));
+      // Add camera source to backend
+      const sourceData = {
+        name: newCameraData.name,
+        type: newCameraData.type,
+        ip: newCameraData.ip || null,
+        port: newCameraData.port || null,
+        username: newCameraData.username || null,
+        password: newCameraData.password || null,
+        rtspUrl: newCameraData.rtspUrl || null
+      };
 
-        toast({
-          title: "Channels Discovered",
-          description: `Found ${discoveredChannels.length} cameras in ${source.name}.`,
-        });
-      } else {
-        throw new Error('Discovery failed');
-      }
-
-    } catch (error) {
-      // Mock discovered channels for demo
-      let mockChannels: CameraChannel[] = [];
+      const response = await api.post('/cameras/sources', sourceData);
       
-      if (source.type === 'nvr' || source.type === 'dvr') {
-        const channelCount = Math.floor(Math.random() * 5) + 4;
-        mockChannels = Array.from({ length: channelCount }, (_, i) => ({
-          id: `${source.id}_ch${i + 1}`,
-          name: `Camera ${i + 1}`,
-          channelNumber: i + 1,
-          rtspUrl: `rtsp://${source.ip}:554/Streaming/Channels/${i + 1}01`,
-          mainStream: `rtsp://${source.ip}:554/Streaming/Channels/${i + 1}01`,
-          subStream: `rtsp://${source.ip}:554/Streaming/Channels/${i + 1}02`,
-          enabled: true,
-          addedToDisplay: false,
-          resolution: '1920x1080',
-          fps: 25
-        }));
-      } else if (source.type === 'hikconnect') {
-        const deviceNames = ['Front Door', 'Garage', 'Backyard', 'Living Room', 'Office'];
-        mockChannels = deviceNames.map((name, i) => ({
-          id: `${source.id}_hik${i + 1}`,
-          name,
-          channelNumber: i + 1,
-          rtspUrl: `rtsp://hikconnect.camera${i + 1}.com/live`,
-          mainStream: `rtsp://hikconnect.camera${i + 1}.com/live/main`,
-          subStream: `rtsp://hikconnect.camera${i + 1}.com/live/sub`,
-          enabled: true,
-          addedToDisplay: false,
-          resolution: '1920x1080',
-          fps: 25
-        }));
+      // Auto-discover channels for multi-channel sources
+      if (['nvr', 'dvr', 'hikconnect'].includes(newCameraData.type)) {
+        await discoverChannels(sourceData);
       }
 
-      setCameraSources(prev => prev.map(s => 
-        s.id === source.id 
-          ? { ...s, channels: mockChannels, status: 'connected' }
-          : s
-      ));
+      // Reload data from backend
+      await loadCameraData();
+
+      setAddCameraOpen(false);
+      resetNewCameraData();
 
       toast({
-        title: "Channels Discovered",
-        description: `Found ${mockChannels.length} cameras in ${source.name}.`,
+        title: "Camera Source Added",
+        description: `${newCameraData.name} has been added successfully.`,
+      });
+    } catch (error) {
+      console.error('Failed to add camera source:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add camera source.",
+        variant: "destructive"
       });
     } finally {
       setIsDiscovering(false);
+    }
+  };
+
+  const discoverChannels = async (sourceData: any) => {
+    try {
+      const discoveryData = {
+        type: sourceData.type,
+        ip: sourceData.ip,
+        port: sourceData.port,
+        username: sourceData.username,
+        password: sourceData.password
+      };
+
+      const discoveredChannels = await api.post('/cameras/discover', discoveryData);
+      
+      toast({
+        title: "Channels Discovered",
+        description: `Found ${discoveredChannels.length} cameras.`,
+      });
+
+      return discoveredChannels;
+    } catch (error) {
+      console.error('Channel discovery failed:', error);
+      toast({
+        title: "Discovery Warning",
+        description: "Using mock data for channel discovery.",
+        variant: "default"
+      });
     }
   };
 
@@ -271,61 +269,105 @@ const EnhancedCameraSystem: React.FC = () => {
     });
   };
 
-  const addChannelToDisplay = (source: CameraSource, channel: CameraChannel) => {
-    const maxPosition = Math.max(0, ...displayedCameras.map(c => c.position));
-    const camerasPerScreen = currentLayout;
-    const screen = Math.floor(maxPosition / camerasPerScreen) + 1;
-    
-    const newDisplayedCamera: DisplayedCamera = {
-      id: `display_${Date.now()}`,
-      sourceId: source.id,
-      channelId: channel.id,
-      name: `${source.name} - ${channel.name}`,
-      rtspUrl: channel.rtspUrl,
-      position: maxPosition + 1,
-      screen,
-      isActive: false
-    };
+  const addChannelToDisplay = async (source: CameraSource, channel: CameraChannel) => {
+    try {
+      const maxPosition = Math.max(0, ...displayedCameras.map(c => c.position));
+      const camerasPerScreen = currentLayout;
+      const screen = Math.floor(maxPosition / camerasPerScreen) + 1;
+      
+      const displayData = {
+        sourceId: source.id,
+        channelId: channel.id,
+        name: `${source.name} - ${channel.name}`,
+        rtspUrl: channel.rtspUrl,
+        position: maxPosition + 1,
+        screen
+      };
 
-    setDisplayedCameras(prev => [...prev, newDisplayedCamera]);
+      await api.post('/cameras/display', displayData);
+      
+      // Reload data from backend
+      await loadCameraData();
 
-    // Update channel status
-    setCameraSources(prev => prev.map(s => 
-      s.id === source.id 
-        ? {
-            ...s,
-            channels: s.channels?.map(c => 
-              c.id === channel.id ? { ...c, addedToDisplay: true } : c
-            )
-          }
-        : s
-    ));
-
-    toast({
-      title: "Camera Added",
-      description: `${channel.name} has been added to the display.`,
-    });
+      toast({
+        title: "Camera Added",
+        description: `${channel.name} has been added to the display.`,
+      });
+    } catch (error) {
+      console.error('Failed to add camera to display:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add camera to display.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const removeFromDisplay = (displayedCamera: DisplayedCamera) => {
-    setDisplayedCameras(prev => prev.filter(c => c.id !== displayedCamera.id));
+  const removeFromDisplay = async (displayedCamera: DisplayedCamera) => {
+    try {
+      await api.delete(`/cameras/display/${displayedCamera.id}`);
+      
+      // Reload data from backend
+      await loadCameraData();
 
-    // Update source channel status
-    setCameraSources(prev => prev.map(s => 
-      s.id === displayedCamera.sourceId 
-        ? {
-            ...s,
-            channels: s.channels?.map(c => 
-              c.id === displayedCamera.channelId ? { ...c, addedToDisplay: false } : c
-            )
-          }
-        : s
-    ));
+      toast({
+        title: "Camera Removed",
+        description: "Camera has been removed from display.",
+      });
+    } catch (error) {
+      console.error('Failed to remove camera:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove camera from display.",
+        variant: "destructive"
+      });
+    }
+  };
 
-    toast({
-      title: "Camera Removed",
-      description: `Camera has been removed from display.`,
-    });
+  const startStream = async (camera: DisplayedCamera) => {
+    try {
+      await api.post(`/cameras/${camera.id}/start`, {});
+      
+      // Update local state
+      setDisplayedCameras(prev => prev.map(c => 
+        c.id === camera.id ? { ...c, is_active: true } : c
+      ));
+
+      toast({
+        title: "Stream Started",
+        description: `${camera.name} is now streaming.`,
+      });
+    } catch (error) {
+      console.error('Failed to start stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start camera stream.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopStream = async (camera: DisplayedCamera) => {
+    try {
+      await api.post(`/cameras/${camera.id}/stop`, {});
+      
+      // Update local state
+      setDisplayedCameras(prev => prev.map(c => 
+        c.id === camera.id ? { ...c, is_active: false } : c
+      ));
+
+      toast({
+        title: "Stream Stopped",
+        description: `${camera.name} stream has been stopped.`,
+      });
+    } catch (error) {
+      console.error('Failed to stop stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to stop camera stream.",
+        variant: "destructive"
+      });
+    }
   };
 
   const renderCameraGrid = () => {
@@ -338,6 +380,18 @@ const EnhancedCameraSystem: React.FC = () => {
       currentLayout === 9 ? 'grid-cols-3 grid-rows-3' :
       'grid-cols-4 grid-rows-3'
     }`;
+
+    if (isLoading) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
+            <h3 className="text-lg font-medium mb-2">Loading Cameras</h3>
+            <p className="text-sm">Please wait while we load your camera configuration...</p>
+          </div>
+        </div>
+      );
+    }
 
     if (screenCameras.length === 0) {
       return (
@@ -371,20 +425,28 @@ const EnhancedCameraSystem: React.FC = () => {
                       <Monitor className="w-8 h-8 mx-auto mb-2 opacity-75" />
                       <div className="text-sm font-medium">{camera.name}</div>
                       <div className="text-xs text-gray-400 mt-1">
-                        {camera.isActive ? 'Streaming' : 'Ready to stream'}
+                        {camera.is_active ? 'Streaming' : 'Ready to stream'}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {camera.source_type?.toUpperCase()} • Position {camera.position}
                       </div>
                     </div>
                   </div>
                   
                   <div className="absolute top-2 left-2">
-                    <Badge variant={camera.isActive ? "default" : "secondary"} className="text-xs">
-                      {camera.isActive ? 'LIVE' : 'READY'}
+                    <Badge variant={camera.is_active ? "default" : "secondary"} className="text-xs">
+                      {camera.is_active ? 'LIVE' : 'READY'}
                     </Badge>
                   </div>
                   
                   <div className="absolute top-2 right-2 flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                      {camera.isActive ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-6 w-6 p-0"
+                      onClick={() => camera.is_active ? stopStream(camera) : startStream(camera)}
+                    >
+                      {camera.is_active ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
                     </Button>
                     <Button 
                       size="sm" 
@@ -400,7 +462,7 @@ const EnhancedCameraSystem: React.FC = () => {
                 <div className="absolute inset-0 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
                   <div className="text-center text-gray-500">
                     <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                    <div className="text-xs">Empty Slot</div>
+                    <div className="text-xs">Empty Slot {i + 1}</div>
                   </div>
                 </div>
               )}
@@ -524,8 +586,19 @@ const EnhancedCameraSystem: React.FC = () => {
               )}
             </div>
             
-            <Button onClick={addCameraSource} className="w-full">
-              Add Camera Source
+            <Button 
+              onClick={addCameraSource} 
+              className="w-full"
+              disabled={isDiscovering}
+            >
+              {isDiscovering ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding Camera...
+                </>
+              ) : (
+                'Add Camera Source'
+              )}
             </Button>
           </TabsContent>
           
@@ -598,7 +671,7 @@ const EnhancedCameraSystem: React.FC = () => {
                                 addChannelToDisplay(source, channel);
                               } else {
                                 const displayedCamera = displayedCameras.find(
-                                  c => c.channelId === channel.id
+                                  c => c.channel_id === channel.id
                                 );
                                 if (displayedCamera) {
                                   removeFromDisplay(displayedCamera);
@@ -626,7 +699,7 @@ const EnhancedCameraSystem: React.FC = () => {
           </Card>
         ))}
         
-        {cameraSources.length === 0 && (
+        {cameraSources.length === 0 && !isLoading && (
           <Card>
             <CardContent className="p-8 text-center">
               <Camera className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -656,6 +729,9 @@ const EnhancedCameraSystem: React.FC = () => {
               <Badge variant="outline">
                 Screen {currentScreen}
               </Badge>
+              <Badge variant={isLoading ? "secondary" : "default"}>
+                {isLoading ? 'Loading...' : 'Connected'}
+              </Badge>
             </div>
           </div>
           
@@ -683,6 +759,7 @@ const EnhancedCameraSystem: React.FC = () => {
               variant="outline"
               onClick={saveConfiguration}
               className="flex items-center gap-2"
+              disabled={isLoading}
             >
               <Save className="w-4 h-4" />
               Save Layout
