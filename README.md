@@ -2,303 +2,292 @@
 
 ![JERICHO Security](https://img.shields.io/badge/JERICHO-Security%20Type%20C-2D5A5C?style=for-the-badge&logo=shield&logoColor=white)
 ![Version](https://img.shields.io/badge/Version-2.0.0-D18B47?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-In%20Development-4A6B75?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Backend%20APIs%20Ready-4A6B75?style=for-the-badge)
 
 ## 🎯 Project Overview
 
 **JERICHO Security Type C** combines the **battle-tested RTSP streaming engine** from your proven surveillance system with the **modern React/TypeScript frontend** from your GitHub repository, creating the ultimate professional surveillance platform.
 
-### 🚀 Key Enhancements
+### 🚀 Latest Updates (June 17, 2025)
 
-- ✅ **Proven RTSP Engine** - 12 concurrent camera support
-- ✅ **Modern React Frontend** - TypeScript + shadcn/ui + Tailwind
-- ✅ **Enhanced Database** - PostgreSQL + Redis caching
-- ✅ **Version Control** - Complete rollback system
-- ✅ **Docker Ready** - Full containerization
-- ✅ **AI Motion Detection** - Enhanced object recognition
-- ✅ **SIP/VoIP Integration** - Communication features
+- ✅ **Complete Settings UI** - All 4 major settings components production-ready
+- ✅ **Backend API Server** - Express server with Settings API endpoints implemented
+- ✅ **Database Integration** - PostgreSQL + Redis with automated schema creation
+- ✅ **One-Command Installation** - Automated Ubuntu 24.04 deployment script
+- ✅ **PM2 Process Management** - Production-ready service management
+- ✅ **Security Configuration** - Environment setup with auto-generated secrets
 
-## 📋 Copy-Paste Quick Start
+## 📋 Quick Deployment
 
-### 1. Clone and Setup
+### 🎯 ONE-COMMAND INSTALLATION (Ubuntu 24.04)
 ```bash
-git clone https://github.com/AbdurahmanZA/jericho-security-type-c.git
-cd jericho-security-type-c
-chmod +x scripts/*.sh
-./scripts/dev-setup.sh
-```
-
-### 2. Development Mode
-```bash
-npm run dev
-# OR with PM2
-pm2 start ecosystem.config.js
-```
-
-### 3. Production Deployment (Ubuntu)
-```bash
-sudo ./scripts/install-ubuntu.sh
-sudo ./scripts/deploy.sh v2.0.0
-```
-
-### 4. Docker Deployment
-```bash
-docker-compose up -d
-```
-
-### 5. Version Control & Rollback
-```bash
-# Create version
-sudo ./scripts/version-control.sh create v2.0.1
-
-# Deploy
-sudo ./scripts/deploy.sh v2.0.1
-
-# Rollback if needed
-sudo ./scripts/rollback.sh v2.0.0
-```
-
-## 🏗️ Architecture
-
-```
-JERICHO Security Type C = GitHub UI/UX + Proven RTSP Backend + Enhanced Features
-
-Frontend: React 18 + TypeScript + Vite + shadcn/ui + Tailwind CSS
-Backend:  Node.js + Express + PostgreSQL + Redis + FFmpeg
-Stream:   RTSP → HLS/WebRTC with auto-failover
-Deploy:   Docker + Version Control + Multi-platform scripts
-```
-
-## 🎨 UI Theme Preservation
-
-**CRITICAL**: This project preserves the **exact theme and layout** from `jericho-security-ad958edc`:
-
-- **Dark theme with blue/green accents** (`#2D5A5C`, `#D18B47`)
-- **shadcn/ui component library** (buttons, cards, dialogs, etc.)
-- **Tailwind CSS styling** exactly as implemented
-- **React component structure** (Index, Settings, MultiView, NotFound)
-- **Responsive design patterns** maintained
-
-## 📁 Project Structure
-
-```
-jericho-security-type-c/
-├── frontend/                 # React + TypeScript (from GitHub)
-│   ├── src/
-│   │   ├── components/      # shadcn/ui components (preserved)
-│   │   ├── pages/          # Index, Settings, MultiView, NotFound
-│   │   ├── lib/            # Utils and theme configuration
-│   │   └── hooks/          # Custom React hooks
-│   ├── package.json        # Frontend dependencies
-│   ├── tailwind.config.ts  # Theme configuration (preserved)
-│   └── vite.config.ts      # Build configuration
-│
-├── backend/                 # Enhanced Node.js server
-│   ├── src/
-│   │   ├── controllers/    # API controllers
-│   │   ├── services/       # RTSP engine, motion detection
-│   │   ├── models/         # Database models
-│   │   ├── routes/         # API routes
-│   │   └── utils/          # Utilities and helpers
-│   ├── migrations/         # Database migrations
-│   └── package.json        # Backend dependencies
-│
-├── scripts/                # Deployment & management
-│   ├── install-ubuntu.sh   # Ubuntu production installer
-│   ├── install-centos.sh   # CentOS production installer
-│   ├── install-debian.sh   # Debian production installer
-│   ├── deploy.sh           # Version deployment
-│   ├── rollback.sh         # Version rollback
-│   ├── version-control.sh  # Version management
-│   ├── backup.sh           # Database backup
-│   └── dev-setup.sh        # Development setup
-│
-├── docker/                 # Containerization
-│   ├── docker-compose.yml  # Multi-service orchestration
-│   ├── frontend.Dockerfile # Frontend container
-│   ├── backend.Dockerfile  # Backend container
-│   └── nginx.conf          # Reverse proxy configuration
-│
-├── docs/                   # Documentation
-│   ├── INSTALLATION.md     # Detailed setup guide
-│   ├── API.md              # API documentation
-│   ├── TROUBLESHOOTING.md  # Common issues
-│   └── ARCHITECTURE.md     # System architecture
-│
-└── releases/               # Version management
-    ├── v2.0.0/             # Version releases
-    ├── v2.0.1/
-    └── current -> v2.0.1   # Current version symlink
-```
-
-## 🔧 Technology Stack
-
-### Frontend (Preserved from GitHub)
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **shadcn/ui** component library
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **TanStack Query** for state management
-- **Lucide React** for icons
-
-### Backend (Enhanced)
-- **Node.js 20+** with Express
-- **PostgreSQL 15+** for primary database
-- **Redis 7+** for caching and sessions
-- **FFmpeg 6+** for video processing
-- **WebSocket** for real-time communication
-- **JWT** for authentication
-
-### DevOps & Deployment
-- **Docker** containerization
-- **PM2** process management
-- **Nginx** reverse proxy
-- **Git-based** version control
-- **Multi-platform** install scripts
-
-## 🎯 Feature Roadmap
-
-### Phase 1: Foundation ✅
-- [x] Repository structure created
-- [x] Frontend theme preservation
-- [x] Backend architecture design
-- [x] Version control system
-- [x] Docker configuration
-
-### Phase 2: Integration (Current)
-- [ ] Merge GitHub frontend components
-- [ ] Integrate proven RTSP engine
-- [ ] Setup PostgreSQL database
-- [ ] Implement motion detection
-- [ ] WebRTC integration
-
-### Phase 3: Enhancement
-- [ ] AI-powered motion detection
-- [ ] SIP/VoIP integration
-- [ ] Mobile PWA support
-- [ ] Advanced analytics
-- [ ] Multi-tenant support
-
-### Phase 4: Production
-- [ ] Performance optimization
-- [ ] Security hardening
-- [ ] Comprehensive testing
-- [ ] Documentation completion
-- [ ] Final deployment scripts
-
-## 📞 Integration Features
-
-### RTSP Streaming Engine (from Proven System)
-- **12 concurrent cameras** supported
-- **Auto-reconnection** with exponential backoff
-- **Quality adaptation** based on bandwidth
-- **HLS + WebRTC** dual streaming
-- **Motion detection** via Hikvision ISAPI + FFmpeg
-
-### Modern Frontend (from GitHub)
-- **Professional UI** with dark theme
-- **Responsive design** for all devices
-- **Real-time updates** via WebSocket
-- **Settings management** with backup/restore
-- **Multi-view layouts** (1, 4, 9, 12, 16 cameras)
-
-### Enhanced Database Layer
-- **PostgreSQL** for robust data persistence
-- **Redis** for session management and caching
-- **Migration system** for database updates
-- **Backup/restore** functionality
-- **Performance optimization**
-
-## 🚨 Production Deployment
-
-### Ubuntu/Debian (Recommended)
-```bash
-# Download installer
+# Download and run the automated installer
 wget https://raw.githubusercontent.com/AbdurahmanZA/jericho-security-type-c/main/scripts/install-ubuntu.sh
 chmod +x install-ubuntu.sh
+./install-ubuntu.sh
 
-# Run production deployment
-sudo ./install-ubuntu.sh
-
-# Verify installation
-sudo systemctl status jericho-security
-sudo systemctl status postgresql
-sudo systemctl status redis
+# Access URLs after installation:
+# Frontend: http://localhost:5173
+# Backend:  http://localhost:5000
+# Health:   http://localhost:5000/health
 ```
 
-### CentOS/RHEL
-```bash
-wget https://raw.githubusercontent.com/AbdurahmanZA/jericho-security-type-c/main/scripts/install-centos.sh
-chmod +x install-centos.sh
-sudo ./install-centos.sh
-```
-
-### Docker (Any Platform)
-```bash
-git clone https://github.com/AbdurahmanZA/jericho-security-type-c.git
-cd jericho-security-type-c
-docker-compose up -d
-```
-
-## 🔄 Version Management
-
-```bash
-# List available versions
-sudo ./scripts/list-versions.sh
-
-# Create new version
-sudo ./scripts/version-control.sh create v2.0.2
-
-# Deploy specific version
-sudo ./scripts/deploy.sh v2.0.2
-
-# Rollback to previous version
-sudo ./scripts/rollback.sh v2.0.1
-
-# View deployment history
-sudo ./scripts/deployment-history.sh
-```
-
-## 🛠️ Development
-
-### Prerequisites
-- Node.js 20+
-- PostgreSQL 15+
-- Redis 7+
-- FFmpeg 6+
-- Git
-
-### Development Setup
+### 🔧 Manual Development Setup
 ```bash
 # Clone repository
 git clone https://github.com/AbdurahmanZA/jericho-security-type-c.git
 cd jericho-security-type-c
 
-# Run development setup
-./scripts/dev-setup.sh
+# Start with PM2 (recommended)
+pm2 start ecosystem.config.js
 
-# Start development servers
-npm run dev
-
-# Or with PM2
-pm2 start ecosystem.config.js --env development
+# OR start manually
+cd backend && npm install && npm run dev
+cd ../frontend && npm install && npm run dev
 ```
 
-### Testing
+## 🏗️ Current Architecture Status
+
+### ✅ **COMPLETED COMPONENTS**
+
+#### Frontend (Production Ready)
+- **React 18 + TypeScript** with Vite build system
+- **shadcn/ui Component Library** with dark theme
+- **Complete Settings Interface** with 4 major components:
+  - 🔧 HikvisionSettings - Device credential management  
+  - 🎯 MotionDetectionSettings - Detection configuration
+  - 👥 UserManagement - Role-based user control
+  - ⚙️ SystemSettings - Global system configuration
+- **Responsive Design** optimized for all screen sizes
+- **Toast Notifications** for real-time user feedback
+
+#### Backend (Functional)
+- **Express Server** with comprehensive middleware
+- **Settings API Endpoints** for all frontend components:
+  - `GET/POST /api/hikvision/*` - Device management
+  - `GET/PUT /api/motion/settings` - Motion detection
+  - `GET/POST /api/users` - User management  
+  - `GET/PUT /api/system/settings` - System configuration
+- **Database Integration** with PostgreSQL + Redis
+- **WebSocket Support** for real-time updates
+- **Health Monitoring** with `/health` endpoint
+
+#### Infrastructure (Automated)
+- **Database Schema** auto-created on startup
+- **Environment Configuration** with secure defaults
+- **PM2 Process Management** with monitoring
+- **Ubuntu Installation Script** for deployment
+- **Firewall Configuration** for security
+
+### 🔄 **IN DEVELOPMENT**
+
+#### Authentication & Security
+- JWT authentication middleware implementation
+- Password hashing with bcrypt
+- API route protection
+- Role-based access control (RBAC)
+
+#### RTSP Streaming Engine
+- FFmpeg integration for video processing
+- HLS stream generation
+- WebRTC signaling server
+- Camera discovery and management
+
+#### Advanced Features
+- Real Hikvision ISAPI integration
+- Motion detection with zones
+- Event recording and playback
+- Multi-camera management interface
+
+## 🛠️ Technology Stack
+
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for development and building
+- **shadcn/ui** component library
+- **Tailwind CSS** for styling
+- **TanStack Query** for state management
+- **WebSocket** for real-time updates
+
+### Backend
+- **Node.js 20+** with Express
+- **PostgreSQL 15+** for data persistence
+- **Redis 7+** for caching and sessions
+- **Winston** for logging
+- **PM2** for process management
+- **FFmpeg** for video processing (coming)
+
+### DevOps
+- **Docker** containerization ready
+- **PM2** process management
+- **Nginx** reverse proxy support
+- **Ubuntu 24.04** automated deployment
+- **Git-based** version control with rollback
+
+## 📊 API Documentation
+
+### Settings API Endpoints
+
+#### Hikvision Management
 ```bash
-# Run frontend tests
-cd frontend && npm test
+# Get all Hikvision devices
+GET /api/hikvision/devices
 
-# Run backend tests
-cd backend && npm test
-
-# Integration tests
-npm run test:integration
-
-# Performance tests
-npm run test:performance
+# Test device connection  
+POST /api/hikvision/test-connection
+{
+  "ip": "192.168.1.100",
+  "port": 80,
+  "username": "admin", 
+  "password": "password"
+}
 ```
+
+#### Motion Detection
+```bash
+# Get motion settings for all cameras
+GET /api/motion/settings
+
+# Update motion settings for specific camera
+PUT /api/motion/settings/:cameraId
+{
+  "motion_detection": {
+    "enabled": true,
+    "sensitivity": 75,
+    "zones": [...]
+  }
+}
+```
+
+#### User Management
+```bash
+# Get all users
+GET /api/users
+
+# Create new user
+POST /api/users
+{
+  "username": "operator1",
+  "email": "operator@company.com",
+  "password": "secure_password",
+  "role": "operator"
+}
+```
+
+#### System Settings
+```bash
+# Get all system settings grouped by category
+GET /api/system/settings
+
+# Update system setting
+PUT /api/system/settings
+{
+  "category": "general",
+  "key": "max_cameras",
+  "value": 16,
+  "description": "Maximum number of cameras"
+}
+```
+
+### Health Check
+```bash
+# System health status
+GET /health
+{
+  "status": "healthy",
+  "timestamp": "2025-06-17T09:45:00.000Z",
+  "services": {
+    "database": "healthy",
+    "redis": "healthy"
+  },
+  "version": "2.0.0"
+}
+```
+
+## 🎨 UI Theme & Design
+
+The project preserves the exact professional theme from the original GitHub repository:
+
+- **Color Palette**: Dark theme with `#2D5A5C` (dark teal) and `#D18B47` (warm gold)
+- **Component Library**: shadcn/ui with consistent styling
+- **Typography**: Professional fonts with proper hierarchy
+- **Responsive Design**: Mobile-first approach with desktop optimization
+- **Accessibility**: WCAG compliant with proper contrast ratios
+
+## 🔧 Development Workflow
+
+### Starting Development Environment
+```bash
+# Quick start with PM2
+pm2 start ecosystem.config.js
+
+# Manual start (two terminals)
+# Terminal 1 - Backend
+cd backend && npm run dev
+
+# Terminal 2 - Frontend  
+cd frontend && npm run dev
+```
+
+### Production Deployment
+```bash
+# Build frontend for production
+cd frontend && npm run build
+
+# Copy to backend public directory
+cp -r dist/* ../backend/public/
+
+# Start production services
+pm2 start ecosystem.config.js --env production
+pm2 save && pm2 startup
+```
+
+### Monitoring & Management
+```bash
+# View service status
+pm2 status
+
+# View logs
+pm2 logs jericho-backend
+
+# Restart services
+pm2 restart all
+
+# Check system health
+curl http://localhost:5000/health
+```
+
+## 🚀 Roadmap & Next Steps
+
+### Phase 1: Integration Testing ✅
+- [x] Frontend Settings UI complete
+- [x] Backend API implementation
+- [x] Database integration
+- [x] Automated deployment
+
+### Phase 2: Authentication & Security (Current)
+- [ ] JWT authentication implementation
+- [ ] API route protection
+- [ ] Password hashing and validation
+- [ ] Role-based access control
+
+### Phase 3: RTSP Streaming (Next)
+- [ ] FFmpeg integration
+- [ ] HLS stream generation  
+- [ ] WebRTC signaling
+- [ ] Camera discovery interface
+
+### Phase 4: Advanced Features
+- [ ] Real Hikvision ISAPI integration
+- [ ] Motion detection with zones
+- [ ] Event recording and playback
+- [ ] Performance optimization
+
+### Phase 5: Production Enhancement
+- [ ] Advanced monitoring
+- [ ] Backup and restore system
+- [ ] Multi-tenant support
+- [ ] Mobile PWA capabilities
 
 ## 📖 Documentation
 
@@ -309,33 +298,24 @@ npm run test:performance
 
 ## 🔐 Security Features
 
-- **JWT Authentication** with refresh tokens
-- **Role-based access control** (Admin, Operator, Viewer)
-- **HTTPS/WSS** encryption in production
-- **Input validation** and sanitization
-- **Rate limiting** and DDoS protection
-- **Audit logging** for all actions
+- **Environment Configuration** with secure secret generation
+- **Database Security** with parameterized queries
+- **Input Validation** and sanitization
+- **Rate Limiting** for API protection
+- **Firewall Configuration** for system security
+- **Health Monitoring** for service status
 
-## 🎯 Success Criteria
+## 📞 Support & Contributing
 
-- ✅ **Visual match**: UI identical to GitHub repository
-- ✅ **Functional match**: RTSP streaming works like proven system
-- ✅ **Enhanced features**: PostgreSQL, Redis, Docker, version control
-- ✅ **Production ready**: Complete deployment pipeline
-- ✅ **Rollback capability**: Safe version management
-
-## 📞 Support
-
-For issues, questions, or contributions:
-- Create an issue on GitHub
-- Check the troubleshooting guide
-- Review the documentation
+- **Issues**: Create an issue on GitHub for bugs or feature requests
+- **Documentation**: Check the docs folder for detailed guides
+- **Security**: Report security issues privately to maintainers
 
 ---
 
-**JERICHO Security Type C** - Where proven reliability meets modern technology! 🛡️
+**JERICHO Security Type C** - Professional surveillance system with modern architecture! 🛡️
 
-**Built by**: Security Systems Engineer  
-**Version**: 2.0.0-dev  
-**Status**: In Development  
-**License**: MIT  
+**Current Status**: Backend APIs functional, ready for integration testing  
+**Next Milestone**: Authentication implementation and RTSP streaming  
+**Version**: 2.0.0 (Backend Foundation Complete)  
+**Last Updated**: June 17, 2025
