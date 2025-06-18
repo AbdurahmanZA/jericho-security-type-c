@@ -1,308 +1,76 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Global CSS Reset and Base Styles */
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #1a1a1a;
 
-/* Jericho Security Brand Theme */
-@layer base {
-  :root {
-    /* Jericho Brand Colors */
-    --jericho-primary: #2D5A5C;        /* Dark teal/blue-green */
-    --jericho-accent: #D18B47;         /* Warm orange/gold */
-    --jericho-secondary: #4A6B75;      /* Medium blue-gray */
-    --jericho-light: #6B8A95;          /* Light blue-gray */
-    --jericho-very-light: #F0F0F0;     /* Very light gray */
-    --jericho-dark-teal: #335A63;      /* Dark teal variation */
-    
-    /* Light Theme Design System Colors */
-    --background: 0 0% 100%;
-    --foreground: 177 34% 27%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 177 34% 27%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 177 34% 27%;
-
-    --primary: 177 34% 27%;             /* Jericho primary */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 200 25% 36%;           /* Jericho secondary */
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 210 40% 98%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 32 55% 56%;               /* Jericho accent */
-    --accent-foreground: 177 34% 27%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 177 34% 27%;
-    
-    --sidebar-background: 177 34% 27%;   /* Primary teal for sidebar */
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 177 34% 27%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 25% 36%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 200 25% 36%;
-    --sidebar-ring: 177 34% 27%;
-
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    /* Dark Theme Design System Colors */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 177 34% 27%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 200 25% 36%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 32 55% 56%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 177 34% 22%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 177 34% 27%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 25% 31%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 200 25% 31%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+* {
+  box-sizing: border-box;
+}
 
-  body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    font-weight: 400;
-    opacity: 0.8; /* Softer appearance for body text */
-  }
-  
-  /* Jericho Typography */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 1; /* Full opacity for headings */
-  }
-  
-  .jericho-brand {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  
-  .jericho-security-text {
-    color: var(--jericho-accent);
-    font-weight: 600;
-  }
-  
-  /* Jericho Component Styles */
-  .jericho-primary-bg {
-    background: linear-gradient(135deg, var(--jericho-primary) 0%, var(--jericho-dark-teal) 100%);
-  }
-  
-  .jericho-accent-bg {
-    background-color: var(--jericho-accent);
-  }
-  
-  .jericho-gradient {
-    background: linear-gradient(135deg, var(--jericho-primary) 0%, var(--jericho-accent) 100%);
-  }
-  
-  .jericho-gradient-reverse {
-    background: linear-gradient(135deg, var(--jericho-accent) 0%, var(--jericho-primary) 100%);
-  }
-  
-  .jericho-shield {
-    box-shadow: 0 4px 20px rgba(45, 90, 92, 0.3);
-  }
-  
-  /* Enhanced Button Styles */
-  .jericho-btn-primary {
-    background: linear-gradient(135deg, var(--jericho-primary) 0%, var(--jericho-dark-teal) 100%);
-    border: 1px solid var(--jericho-light);
-    color: white;
-    transition: all 0.3s ease;
-  }
-  
-  .jericho-btn-primary:hover {
-    background: linear-gradient(135deg, var(--jericho-accent) 0%, var(--jericho-primary) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(45, 90, 92, 0.4);
-  }
-  
-  .jericho-btn-accent {
-    background-color: var(--jericho-accent);
-    color: var(--jericho-primary);
-    font-weight: 600;
-  }
-  
-  .jericho-btn-accent:hover {
-    background-color: var(--jericho-light);
-    color: var(--jericho-primary);
-  }
-  
-  /* Card Enhancements */
-  .jericho-card {
-    border: 1px solid var(--jericho-light);
-    background: rgba(45, 90, 92, 0.02);
-    transition: all 0.3s ease;
-  }
-  
-  .jericho-card:hover {
-    border-color: var(--jericho-accent);
-    box-shadow: 0 4px 20px rgba(45, 90, 92, 0.1);
-    transform: translateY(-2px);
-  }
-  
-  /* Status Indicators */
-  .status-online {
-    color: #10B981;
-    animation: pulse-secure 2s infinite;
-  }
-  
-  .status-offline {
-    color: #EF4444;
-  }
-  
-  .status-warning {
-    color: var(--jericho-accent);
-  }
-  
-  /* Stream Container */
-  .stream-container {
-    border-radius: 8px;
-    overflow: hidden;
-    border: 2px solid var(--jericho-light);
-    transition: border-color 0.3s ease;
-  }
-  
-  .stream-container:hover {
-    border-color: var(--jericho-accent);
-  }
-  
-  .stream-container.active {
-    border-color: var(--jericho-primary);
-    box-shadow: 0 0 20px rgba(45, 90, 92, 0.3);
-  }
-  
-  /* Responsive Grid */
-  .camera-grid-1 { grid-template-columns: 1fr; }
-  .camera-grid-4 { grid-template-columns: repeat(2, 1fr); }
-  .camera-grid-9 { grid-template-columns: repeat(3, 1fr); }
-  .camera-grid-12 { grid-template-columns: repeat(4, 1fr); }
-  .camera-grid-16 { grid-template-columns: repeat(4, 1fr); }
-  
-  @media (max-width: 768px) {
-    .camera-grid-4,
-    .camera-grid-9,
-    .camera-grid-12,
-    .camera-grid-16 {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  @media (max-width: 1024px) {
-    .camera-grid-9,
-    .camera-grid-12,
-    .camera-grid-16 {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-  
-  /* Sidebar Styling */
-  .jericho-sidebar {
-    background: linear-gradient(180deg, var(--jericho-primary) 0%, var(--jericho-dark-teal) 100%);
-  }
-  
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: rgba(45, 90, 92, 0.1);
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: var(--jericho-light);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--jericho-accent);
-  }
-  
-  /* Loading Animation */
-  .jericho-loading {
-    background: linear-gradient(90deg, 
-      transparent, 
-      rgba(45, 90, 92, 0.1), 
-      transparent
-    );
-    animation: loading-shimmer 1.5s infinite;
-  }
-  
-  @keyframes loading-shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-  
-  /* Focus Styles */
-  .jericho-focus:focus {
-    outline: 2px solid var(--jericho-accent);
-    outline-offset: 2px;
-  }
-  
-  /* Motion Blur Effect */
-  .motion-blur {
-    filter: blur(2px);
-    transition: filter 0.3s ease;
-  }
-  
-  /* Fullscreen Styles */
-  .fullscreen-container {
-    background-color: #000;
-    z-index: 9999;
-  }
-  
-  /* Toast Styling */
-  .jericho-toast {
-    border-left: 4px solid var(--jericho-accent);
-    background: rgba(45, 90, 92, 0.95);
-    color: white;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+input {
+  font-family: inherit;
+  font-size: 1em;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
 }
