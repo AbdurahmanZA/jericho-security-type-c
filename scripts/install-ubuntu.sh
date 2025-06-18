@@ -2,6 +2,7 @@
 
 # JERICHO Security Type C - Ubuntu 24.04 Installation Script
 # Automated setup for development and production environments
+# Fixed ES Module compatibility issues
 
 set -euo pipefail
 
@@ -245,7 +246,7 @@ install_app_dependencies() {
     npm install
     
     # Copy environment file
-    cp .env.example .env
+    cp .env.example .env 2>/dev/null || log "No .env.example found, will create .env manually"
     log "Backend dependencies installed!"
     
     # Install frontend dependencies
@@ -347,26 +348,53 @@ test_installation() {
 start_services() {
     log "Starting JERICHO Security services..."
     
-    # Create PM2 ecosystem file
+    # Create PM2 ecosystem file with ES Module support
     cat > ecosystem.config.js << 'EOF'
-module.exports = {
+/**
+ * JERICHO Security Type C - PM2 Ecosystem Configuration
+ * ES Module compatible configuration for Node.js 20+
+ */
+
+export default {
   apps: [
     {
       name: 'jericho-backend',
       script: 'backend/server.js',
+      cwd: process.cwd(),
+      
+      // Environment variables
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        PORT: 5000
       },
       env_production: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        PORT: 5000
       },
-      watch: ['backend'],
-      ignore_watch: ['node_modules', 'logs', 'uploads'],
+      
+      // Process management
+      instances: 1,
+      exec_mode: 'fork',
+      
+      // Monitoring and restarts
+      watch: ['backend/server.js', 'backend/src'],
+      ignore_watch: ['node_modules', 'logs', 'uploads', 'backend/public'],
+      max_memory_restart: '1G',
+      restart_delay: 5000,
+      max_restarts: 10,
+      min_uptime: '10s',
+      autorestart: true,
+      
+      // Logging
       log_file: 'logs/combined.log',
       out_file: 'logs/out.log',
       error_file: 'logs/error.log',
-      max_memory_restart: '1G',
-      restart_delay: 5000
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      
+      // Advanced options
+      kill_timeout: 5000,
+      listen_timeout: 8000
     }
   ]
 };
@@ -376,7 +404,7 @@ EOF
     mkdir -p logs
     
     # Start backend with PM2
-    pm2 start ecosystem.config.js
+    pm2 start ecosystem.config.js --env development
     pm2 save
     
     # Setup PM2 startup
@@ -425,10 +453,20 @@ display_final_info() {
     echo "   • Stop all services: pm2 stop all"
     echo "   • Check PM2 status: pm2 status"
     echo
+    echo "🔑 Default Login Credentials:"
+    echo "   • Username: admin"
+    echo "   • Password: admin123"
+    echo "   • (Change on first login)"
+    echo
     echo "📁 Project Directory: $(pwd)"
     echo
     echo "✅ Installation completed successfully!"
     echo "✅ Services are running and ready for development!"
+    echo
+    echo "🆘 Troubleshooting:"
+    echo "   • If PM2 fails: pm2 kill && pm2 start ecosystem.config.js"
+    echo "   • If frontend fails: cd frontend && npm run dev"
+    echo "   • View all logs: pm2 logs"
     echo
 }
 
