@@ -11,27 +11,20 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
-    host: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
-      '/ws': {
-        target: 'ws://localhost:5000',
-        ws: true,
-        changeOrigin: true,
-      },
-      '/hls': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
-      '/snapshots': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      }
+    host: '0.0.0.0', // Listen on all interfaces
+    port: 5173,
+    strictPort: true, // Fail if port is already in use
+    open: false, // Don't auto-open browser
+    cors: true,
+    hmr: {
+      port: 5173,
+      host: '0.0.0.0'
     }
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    strictPort: true
   },
   build: {
     outDir: 'dist',
@@ -39,14 +32,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@radix-ui/react-slot', '@radix-ui/react-dialog', '@radix-ui/react-select'],
-          'util-vendor': ['clsx', 'tailwind-merge', 'class-variance-authority']
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs']
         }
       }
     }
-  },
-  define: {
-    'process.env': process.env
   }
 })
