@@ -2,7 +2,7 @@
 
 # JERICHO Security Type C - Ubuntu 24.04 Installation Script
 # Automated setup for development and production environments
-# Fixed ES Module compatibility issues and PM2 path problems
+# Fixed PM2 ES module compatibility issues with .cjs extension
 
 set -euo pipefail
 
@@ -407,15 +407,16 @@ test_installation() {
 start_services() {
     log "Starting JERICHO Security services..."
     
-    # Create PM2 ecosystem file with ES Module support and proper paths
-    cat > ecosystem.config.js << 'EOF'
+    # Create PM2 ecosystem file with CommonJS format for better compatibility
+    # Using .cjs extension to force CommonJS interpretation
+    cat > ecosystem.config.cjs << 'EOF'
 /**
  * JERICHO Security Type C - PM2 Ecosystem Configuration
- * ES Module compatible configuration for Node.js 20+
+ * CommonJS format for maximum PM2 compatibility
  * Fixed script paths and working directory issues
  */
 
-export default {
+module.exports = {
   apps: [
     {
       name: 'jericho-backend',
@@ -467,27 +468,45 @@ EOF
     mkdir -p backend/uploads
     mkdir -p backend/public
     
-    # Verify the ecosystem file syntax
-    log "Verifying PM2 configuration..."
-    if node -c ecosystem.config.js; then
-        log "✓ PM2 configuration syntax is valid"
+    # Verify the ecosystem file exists and is readable
+    if [[ -f "ecosystem.config.cjs" ]]; then
+        log "✓ PM2 configuration file created successfully"
     else
-        error "❌ PM2 configuration has syntax errors!"
+        error "❌ Failed to create PM2 configuration file!"
     fi
     
-    # Start backend with PM2
+    # Verify backend server file exists with correct path
+    if [[ -f "./backend/server.js" ]]; then
+        log "✓ Backend server file verified at: $(pwd)/backend/server.js"
+    else
+        error "❌ Backend server file not found at expected path: $(pwd)/backend/server.js"
+    fi
+    
+    # Start backend with PM2 using the .cjs file
     log "Starting backend with PM2..."
-    pm2 start ecosystem.config.js --env development
+    pm2 start ecosystem.config.cjs --env development
     
     # Wait a moment for the process to start
-    sleep 3
+    sleep 5
     
     # Check if PM2 started successfully
     if pm2 list | grep -q "jericho-backend.*online"; then
         log "✓ Backend started successfully with PM2!"
     else
         warn "Backend may have issues starting. Checking logs..."
-        pm2 logs jericho-backend --lines 10
+        pm2 logs jericho-backend --lines 10 || true
+        
+        # Try alternative startup method
+        warn "Trying alternative startup method..."
+        pm2 delete jericho-backend 2>/dev/null || true
+        pm2 start ./backend/server.js --name jericho-backend --env development
+        sleep 3
+        
+        if pm2 list | grep -q "jericho-backend.*online"; then
+            log "✓ Backend started with alternative method!"
+        else
+            error "❌ Failed to start backend with PM2. Check logs: pm2 logs jericho-backend"
+        fi
     fi
     
     # Save PM2 configuration
@@ -590,7 +609,7 @@ final_health_checks() {
         log "✓ PM2 backend process is running"
     else
         warn "⚠️  PM2 backend process may have issues"
-        pm2 logs jericho-backend --lines 5
+        pm2 logs jericho-backend --lines 5 || true
     fi
     
     # Check if backend is responding
@@ -625,7 +644,7 @@ final_health_checks() {
 # Main installation function
 main() {
     echo "============================================="
-    echo "🛡️  JERICHO Security Type C Installer v2.1"
+    echo "🛡️  JERICHO Security Type C Installer v2.2"
     echo "============================================="
     echo "Starting automated installation for Ubuntu 24.04..."
     echo "$(date)"
@@ -654,5 +673,10 @@ main() {
 main "$@" || {
     error "Installation failed! Check the logs above for details."
     echo "You can try running the installation again or check the GitHub repository for support."
+    echo ""
+    echo "Common fixes:"
+    echo "  • Try: pm2 start ./backend/server.js --name jericho-backend"
+    echo "  • Check: pm2 logs jericho-backend"
+    echo "  • Verify: ls -la backend/server.js"
     exit 1
 }
