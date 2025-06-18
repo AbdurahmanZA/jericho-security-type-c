@@ -20,6 +20,12 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/opt/jericho-security"
 REPO_URL="https://github.com/AbdurahmanZA/jericho-security-type-c.git"
 
+# Check for non-interactive flag
+INTERACTIVE=true
+if [[ "$1" == "--yes" ]] || [[ "$1" == "-y" ]] || [[ -n "$CI" ]] || [[ -t 0 ]]; then
+    INTERACTIVE=false
+fi
+
 # Logo
 print_logo() {
     echo -e "${PURPLE}"
@@ -75,10 +81,14 @@ check_ubuntu() {
     UBUNTU_VERSION=$(lsb_release -rs)
     if [[ "$UBUNTU_VERSION" != "24.04" ]]; then
         log_warning "This script is optimized for Ubuntu 24.04. Current version: $UBUNTU_VERSION"
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ "$INTERACTIVE" == "true" ]]; then
+            read -p "Continue anyway? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        else
+            log_info "Continuing with Ubuntu $UBUNTU_VERSION (non-interactive mode)"
         fi
     fi
 }
@@ -120,6 +130,7 @@ install_postgresql() {
 CREATE USER jericho WITH PASSWORD 'jericho_secure_2024';
 CREATE DATABASE jericho_security OWNER jericho;
 GRANT ALL PRIVILEGES ON DATABASE jericho_security TO jericho;
+\c jericho_security
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 EOF
     
@@ -324,7 +335,9 @@ EOF
     cd "$INSTALL_DIR"
     pm2 start ecosystem.config.js > /dev/null 2>&1
     pm2 save > /dev/null 2>&1
-    pm2 startup > /dev/null 2>&1 || true
+    
+    # Setup PM2 startup (handle potential sudo password prompt gracefully)
+    sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp $HOME > /dev/null 2>&1 || true
     
     log_success "PM2 configured and application started"
 }
@@ -377,6 +390,9 @@ get_system_info() {
     echo "   HLS (Universal):      HTTP streams"
     echo "   Streaming API:        http://$IP_ADDRESS:8080/api/streams"
     echo
+    echo -e "${CYAN}🧪 Test Page:${NC}"
+    echo "   Streaming Test: http://$IP_ADDRESS/test-streaming.html"
+    echo
     echo -e "${CYAN}📊 System Management:${NC}"
     echo "   Status Check:   jericho-status"
     echo "   PM2 Status:     pm2 status"
@@ -388,7 +404,8 @@ get_system_info() {
     echo "2. Login with default credentials (admin/admin123!)"
     echo "3. Change default password immediately"
     echo "4. Add your Hikvision credentials in Settings"
-    echo "5. Discover and add cameras"
+    echo "5. Test streaming: http://$IP_ADDRESS/test-streaming.html"
+    echo "6. Discover and add cameras"
     echo
     echo -e "${YELLOW}⚠️  Important Security Notes:${NC}"
     echo "• Change default login credentials immediately"
@@ -397,6 +414,9 @@ get_system_info() {
     echo "• Configure regular backups"
     echo
     echo -e "${GREEN}✅ Installation completed successfully!${NC}"
+    echo
+    echo -e "${BLUE}🔍 Run verification test:${NC}"
+    echo "curl -fsSL https://raw.githubusercontent.com/AbdurahmanZA/jericho-security-type-c/main/verify-installation.sh | bash"
     echo
 }
 
@@ -407,12 +427,17 @@ main() {
     log_info "Starting JERICHO Security Type-C installation..."
     log_info "This will install a complete surveillance system with RTSP streaming"
     
-    # Confirmation
-    read -p "Continue with installation? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Installation cancelled"
-        exit 0
+    # Confirmation for interactive mode only
+    if [[ "$INTERACTIVE" == "true" && -t 0 ]]; then
+        echo
+        read -p "Continue with installation? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Installation cancelled"
+            exit 0
+        fi
+    else
+        log_info "Running in non-interactive mode - proceeding with installation..."
     fi
     
     # Pre-installation checks
