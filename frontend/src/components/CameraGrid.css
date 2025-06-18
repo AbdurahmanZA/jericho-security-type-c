@@ -1,0 +1,372 @@
+/* Camera Grid Styles */
+.camera-grid {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Loading State */
+.camera-grid.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-spinner {
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid #333;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error State */
+.camera-grid.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-message {
+    text-align: center;
+    background: #2d1b1b;
+    padding: 30px;
+    border-radius: 8px;
+    border: 1px solid #ff4444;
+}
+
+.error-message h3 {
+    color: #ff4444;
+    margin-bottom: 15px;
+}
+
+/* Controls Panel */
+.controls-panel {
+    background: #2d2d2d;
+    padding: 20px;
+    border-bottom: 2px solid #333;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.controls-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #fff;
+}
+
+.streaming-controls,
+.stream-controls,
+.stream-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.mode-buttons,
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-active {
+    background: #28a745 !important;
+    color: white;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.4);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #1e7e34;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Streams Container */
+.streams-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.no-streams {
+    text-align: center;
+    padding: 60px 20px;
+    background: #2d2d2d;
+    border-radius: 8px;
+    border: 2px dashed #555;
+}
+
+.no-streams h3 {
+    color: #888;
+    margin-bottom: 15px;
+}
+
+.no-streams p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Streams Grid */
+.streams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    max-width: 100%;
+}
+
+/* Individual Stream Container */
+.stream-container {
+    background: #2d2d2d;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #444;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stream-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    border-color: #007bff;
+}
+
+/* Stream Header */
+.stream-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #333;
+    border-bottom: 1px solid #444;
+}
+
+.stream-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+}
+
+.stream-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-indicator {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Stream Player Container */
+.stream-player-container {
+    padding: 15px;
+    text-align: center;
+    background: #1a1a1a;
+}
+
+.stream-player {
+    width: 100%;
+    max-width: 100%;
+}
+
+.stream-player canvas,
+.stream-player video {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Stream Details */
+.stream-details {
+    padding: 15px;
+    background: #333;
+}
+
+.protocol-status {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+}
+
+.protocol-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.protocol-indicator.active {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+.protocol-indicator.inactive {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .streams-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .controls-panel {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .streaming-controls,
+    .stream-controls,
+    .stream-info {
+        width: 100%;
+    }
+    
+    .streams-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mode-buttons,
+    .control-buttons {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .controls-panel {
+        padding: 15px;
+    }
+    
+    .streams-container {
+        padding: 15px;
+    }
+    
+    .stream-header {
+        padding: 12px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .stream-actions {
+        justify-content: center;
+    }
+}
+
+/* Animation for stream status changes */
+.stream-container {
+    transition: all 0.3s ease;
+}
+
+.stream-container.connecting {
+    border-color: #ffc107;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.stream-container.active {
+    border-color: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.stream-container.error {
+    border-color: #dc3545;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
+}
+
+/* Custom scrollbar */
+.streams-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.streams-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.streams-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.streams-container::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
