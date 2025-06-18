@@ -1,9 +1,10 @@
 /**
  * JERICHO Security Type C - PM2 Ecosystem Configuration
+ * ES Module compatible configuration for Node.js 20+
  * Process management for development and production environments
  */
 
-module.exports = {
+export default {
   apps: [
     {
       name: 'jericho-backend',
@@ -36,6 +37,7 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       min_uptime: '10s',
+      autorestart: true,
       
       // Logging
       log_file: 'logs/combined.log',
