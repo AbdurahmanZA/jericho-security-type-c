@@ -2,7 +2,7 @@
 
 # JERICHO Security Type C - Ubuntu 24.04 Installation Script
 # Automated setup for development and production environments
-# Fixed PM2 ES module compatibility issues with .cjs extension
+# COMPLETE VERSION with database initialization and all missing components
 
 set -euo pipefail
 
@@ -150,6 +150,7 @@ CREATE USER jericho WITH PASSWORD 'jericho_secure_2024';
 CREATE DATABASE jericho_security OWNER jericho;
 GRANT ALL PRIVILEGES ON DATABASE jericho_security TO jericho;
 ALTER USER jericho CREATEDB;
+ALTER USER jericho WITH SUPERUSER;
 \q
 EOF
 
@@ -326,7 +327,7 @@ REDIS_PORT=6379
 REDIS_PASSWORD=
 
 # JWT Configuration
-JWT_SECRET=jericho_jwt_secret_$(openssl rand -hex 16)
+JWT_SECRET=jericho_jwt_secret_$(openssl rand -hex 32)
 JWT_EXPIRE=24h
 
 # File Upload Configuration
@@ -371,6 +372,24 @@ EOF
     log "Network access: http://${LOCAL_IP}:5173"
 }
 
+# Initialize database schema and data
+initialize_database() {
+    log "Initializing database schema and data..."
+    
+    cd backend
+    
+    # Run database migrations
+    log "Running database migrations..."
+    npm run db:migrate
+    
+    # Seed database with initial data
+    log "Seeding database with initial data..."
+    npm run db:seed
+    
+    log "Database initialization completed successfully!"
+    cd ..
+}
+
 # Test installation
 test_installation() {
     log "Testing installation..."
@@ -398,6 +417,13 @@ test_installation() {
         log "✓ Backend server file found"
     else
         error "❌ Backend server file missing!"
+    fi
+    
+    # Test database tables exist
+    if PGPASSWORD='jericho_secure_2024' psql -h localhost -U jericho -d jericho_security -c "SELECT COUNT(*) FROM users;" > /dev/null 2>&1; then
+        log "✓ Database tables created"
+    else
+        error "❌ Database tables missing!"
     fi
     
     log "Installation test completed successfully!"
@@ -487,7 +513,7 @@ EOF
     pm2 start ecosystem.config.cjs --env development
     
     # Wait a moment for the process to start
-    sleep 5
+    sleep 10
     
     # Check if PM2 started successfully
     if pm2 list | grep -q "jericho-backend.*online"; then
@@ -500,7 +526,7 @@ EOF
         warn "Trying alternative startup method..."
         pm2 delete jericho-backend 2>/dev/null || true
         pm2 start ./backend/server.js --name jericho-backend --env development
-        sleep 3
+        sleep 5
         
         if pm2 list | grep -q "jericho-backend.*online"; then
             log "✓ Backend started with alternative method!"
@@ -520,24 +546,86 @@ EOF
         eval "$PM2_STARTUP_CMD" 2>/dev/null || warn "PM2 startup setup may need manual configuration"
     fi
     
-    # Start frontend in development mode (background)
-    log "Starting frontend in development mode..."
+    # Build and configure frontend
+    log "Building and configuring frontend..."
     cd frontend
+    npm run build
     
-    # Kill any existing frontend processes
-    pkill -f "vite" 2>/dev/null || true
-    
-    # Start frontend
-    nohup npm run dev > ../logs/frontend.log 2>&1 &
-    FRONTEND_PID=$!
-    echo $FRONTEND_PID > ../logs/frontend.pid
-    
+    # Copy built frontend to backend public directory
+    cp -r dist/* ../backend/public/
     cd ..
     
-    log "Frontend started in development mode (PID: $FRONTEND_PID)!"
+    # Configure Nginx
+    log "Configuring Nginx..."
+    sudo tee /etc/nginx/sites-available/jericho << 'NGINX_EOF'
+server {
+    listen 80;
+    server_name _;
     
-    # Wait a moment for services to initialize
-    sleep 5
+    # Increase client max body size for file uploads
+    client_max_body_size 50M;
+    
+    # Frontend static files
+    location / {
+        root /home/$USER/jericho-security-type-c/backend/public;
+        try_files $uri $uri/ /index.html;
+        index index.html;
+        
+        # Cache static assets
+        location ~* \.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+    
+    # Backend API routes
+    location /api/ {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+    }
+    
+    # WebSocket connections for real-time updates
+    location /ws {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # Health check endpoint
+    location /health {
+        proxy_pass http://localhost:5000/health;
+        access_log off;
+    }
+}
+NGINX_EOF
+
+    # Update the root path with actual username
+    sudo sed -i "s/\$USER/$USER/g" /etc/nginx/sites-available/jericho
+    
+    # Enable the site and remove default
+    sudo ln -sf /etc/nginx/sites-available/jericho /etc/nginx/sites-enabled/
+    sudo rm -f /etc/nginx/sites-enabled/default
+    
+    # Test and restart Nginx
+    sudo nginx -t
+    sudo systemctl restart nginx
+    
+    log "Services started successfully!"
 }
 
 # Display final information
@@ -557,14 +645,13 @@ display_final_info() {
     echo "   • Local IP: ${LOCAL_IP}"
     echo
     echo "🌐 Access URLs:"
-    echo "   • Frontend (Local): http://localhost:5173"
-    echo "   • Frontend (Network): http://${LOCAL_IP}:5173"
+    echo "   • Frontend (Local): http://localhost"
+    echo "   • Frontend (Network): http://${LOCAL_IP}"
     echo "   • Backend API: http://localhost:5000"
     echo "   • Health Check: http://localhost:5000/health"
     echo
     echo "🔧 Management Commands:"
     echo "   • View backend logs: pm2 logs jericho-backend"
-    echo "   • View frontend logs: tail -f logs/frontend.log"
     echo "   • Restart backend: pm2 restart jericho-backend"
     echo "   • Stop all services: pm2 stop all"
     echo "   • Check PM2 status: pm2 status"
@@ -573,7 +660,7 @@ display_final_info() {
     echo "🔑 Default Login Credentials:"
     echo "   • Username: admin"
     echo "   • Password: admin123"
-    echo "   • (Change on first login)"
+    echo "   • Email: admin@jericho.local"
     echo
     echo "📁 Project Directory: $(pwd)"
     echo
@@ -582,19 +669,22 @@ display_final_info() {
     echo "   • Backend Health: $(curl -s http://localhost:5000/health 2>/dev/null | head -c 20 || echo 'Not responding yet')"
     echo
     echo "✅ Installation completed successfully!"
-    echo "✅ Services are running and ready for development!"
+    echo "✅ Services are running and ready for use!"
     echo
     echo "🆘 If you encounter issues:"
     echo "   • Backend not starting: pm2 logs jericho-backend"
-    echo "   • Frontend issues: tail -f logs/frontend.log"
     echo "   • Database issues: sudo systemctl status postgresql"
     echo "   • Redis issues: sudo systemctl status redis-server"
+    echo "   • Nginx issues: sudo nginx -t && sudo systemctl status nginx"
     echo
-    echo "🔄 To restart everything:"
-    echo "   pm2 restart all && pkill -f vite && cd frontend && nohup npm run dev > ../logs/frontend.log 2>&1 &"
+    echo "🔄 Database Management:"
+    echo "   • Reset database: cd backend && npm run db:reset"
+    echo "   • Run migrations: cd backend && npm run db:migrate"
+    echo "   • Seed data: cd backend && npm run db:seed"
     echo
     echo "📞 Support: Check GitHub issues at https://github.com/AbdurahmanZA/jericho-security-type-c/issues"
     echo
+    echo "⚠️  IMPORTANT: Please change the admin password after first login!"
 }
 
 # Perform final health checks
@@ -602,7 +692,7 @@ final_health_checks() {
     log "Performing final health checks..."
     
     # Wait for services to fully start
-    sleep 10
+    sleep 15
     
     # Check PM2 status
     if pm2 list | grep -q "jericho-backend.*online"; then
@@ -619,18 +709,18 @@ final_health_checks() {
         warn "⚠️  Backend API not responding yet (may still be starting up)"
     fi
     
-    # Check if frontend is running
-    if ps aux | grep -v grep | grep -q "vite"; then
-        log "✓ Frontend development server is running"
+    # Check if frontend is accessible
+    if curl -s http://localhost/ > /dev/null 2>&1; then
+        log "✓ Frontend is accessible via Nginx"
     else
-        warn "⚠️  Frontend development server may have issues"
+        warn "⚠️  Frontend not accessible yet"
     fi
     
     # Check database connection
-    if PGPASSWORD='jericho_secure_2024' psql -h localhost -U jericho -d jericho_security -c "SELECT 1;" > /dev/null 2>&1; then
-        log "✓ Database connection working"
+    if PGPASSWORD='jericho_secure_2024' psql -h localhost -U jericho -d jericho_security -c "SELECT COUNT(*) FROM users;" > /dev/null 2>&1; then
+        log "✓ Database connection working with data"
     else
-        warn "⚠️  Database connection issues"
+        warn "⚠️  Database connection or data issues"
     fi
     
     # Check Redis
@@ -644,9 +734,9 @@ final_health_checks() {
 # Main installation function
 main() {
     echo "============================================="
-    echo "🛡️  JERICHO Security Type C Installer v2.2"
+    echo "🛡️  JERICHO Security Type C Installer v3.0"
     echo "============================================="
-    echo "Starting automated installation for Ubuntu 24.04..."
+    echo "Starting COMPLETE automated installation for Ubuntu 24.04..."
     echo "$(date)"
     echo
     
@@ -663,6 +753,7 @@ main() {
     clone_repository
     install_app_dependencies
     setup_environment
+    initialize_database
     test_installation
     start_services
     final_health_checks
@@ -676,7 +767,8 @@ main "$@" || {
     echo ""
     echo "Common fixes:"
     echo "  • Try: pm2 start ./backend/server.js --name jericho-backend"
+    echo "  • Database issues: cd backend && npm run db:reset"
     echo "  • Check: pm2 logs jericho-backend"
-    echo "  • Verify: ls -la backend/server.js"
+    echo "  • Verify: curl http://localhost:5000/health"
     exit 1
 }
