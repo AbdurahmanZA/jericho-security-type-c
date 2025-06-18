@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JERICHO RTSP Streaming Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+        
+        .streaming-section {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        
+        .streaming-section h2 {
+            color: #fff;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .player-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid #555;
+            margin-bottom: 15px;
+        }
+        
+        .player-container canvas,
+        .player-container video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .status.info {
+            background: rgba(0, 123, 255, 0.2);
+            border: 1px solid #007bff;
+            color: #007bff;
+        }
+        
+        .status.success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+        
+        .status.error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+        
+        .info-section {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #444;
+        }
+        
+        .info-section h3 {
+            margin-top: 0;
+            color: #fff;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        
+        .info-item h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        
+        .info-item p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .code {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎥 JERICHO SECURITY</div>
+            <div class="subtitle">RTSP Streaming Test Page</div>
+        </div>
+
+        <!-- JSMpeg Streaming Section -->
+        <div class="streaming-section">
+            <h2>⚡ JSMpeg Streaming (Low Latency)</h2>
+            <div class="controls">
+                <button class="btn btn-success" onclick="startJSMpegTest()">🎬 Start Test Stream</button>
+                <button class="btn btn-danger" onclick="stopJSMpegTest()">🛑 Stop Stream</button>
+                <button class="btn btn-primary" onclick="checkStreams()">📊 Check Streams</button>
+            </div>
+            <div class="player-container" id="jsmpeg-container">
+                <canvas id="jsmpeg-canvas" style="display: none;"></canvas>
+                <div id="jsmpeg-placeholder">Click "Start Test Stream" to begin JSMpeg streaming</div>
+            </div>
+            <div class="status info" id="jsmpeg-status">
+                Ready to test JSMpeg streaming via WebSocket
+            </div>
+        </div>
+
+        <!-- HLS Streaming Section -->
+        <div class="streaming-section">
+            <h2>🌐 HLS Streaming (Universal)</h2>
+            <div class="controls">
+                <button class="btn btn-success" onclick="startHLSTest()">🎬 Start Test Stream</button>
+                <button class="btn btn-danger" onclick="stopHLSTest()">🛑 Stop Stream</button>
+                <button class="btn btn-primary" onclick="checkHLSPlaylist()">📋 Check Playlist</button>
+            </div>
+            <div class="player-container" id="hls-container">
+                <video id="hls-video" controls autoplay muted style="display: none; width: 100%; max-width: 640px;"></video>
+                <div id="hls-placeholder">Click "Start Test Stream" to begin HLS streaming</div>
+            </div>
+            <div class="status info" id="hls-status">
+                Ready to test HLS streaming via HTTP
+            </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="info-section">
+            <h3>📊 System Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h4>🔧 Backend API</h4>
+                    <p><strong>Health:</strong> <span id="api-health">Checking...</span></p>
+                    <p><strong>URL:</strong> <span id="api-url">/api/health</span></p>
+                </div>
+                <div class="info-item">
+                    <h4>🎥 Streaming API</h4>
+                    <p><strong>Status:</strong> <span id="streaming-health">Checking...</span></p>
+                    <p><strong>URL:</strong> <span id="streaming-url">:8080/api/streams</span></p>
+                </div>
+                <div class="info-item">
+                    <h4>🔌 WebSocket</h4>
+                    <p><strong>Base Port:</strong> 9999</p>
+                    <p><strong>Protocol:</strong> JSMpeg over WS</p>
+                </div>
+                <div class="info-item">
+                    <h4>📺 HLS</h4>
+                    <p><strong>Path:</strong> /hls/</p>
+                    <p><strong>Format:</strong> HTTP Live Streaming</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Instructions -->
+        <div class="info-section">
+            <h3>📋 Usage Instructions</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h4>1. Test Streaming</h4>
+                    <p>Click "Start Test Stream" to begin streaming with a public RTSP source.</p>
+                </div>
+                <div class="info-item">
+                    <h4>2. Add Your Camera</h4>
+                    <div class="code">
+curl -X POST /api/cameras/my-camera/stream \
+  -H "Content-Type: application/json" \
+  -d '{"rtspUrl": "rtsp://user:pass@ip:554/stream"}'</div>
+                </div>
+                <div class="info-item">
+                    <h4>3. View Streams</h4>
+                    <p>JSMpeg: Low latency, real-time monitoring</p>
+                    <p>HLS: Universal compatibility, mobile-friendly</p>
+                </div>
+                <div class="info-item">
+                    <h4>4. Monitor System</h4>
+                    <div class="code">
+# Check system status
+jericho-status
+
+# View logs
+pm2 logs jericho-backend</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/jsmpeg@0.6.0/dist/jsmpeg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <script>
+        let jsmpegPlayer = null;
+        let hlsPlayer = null;
+        const testStreamId = 'test-stream-' + Date.now();
+
+        // Check system health on page load
+        window.onload = function() {
+            checkSystemHealth();
+        };
+
+        // System health check
+        async function checkSystemHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                document.getElementById('api-health').textContent = '✅ Online';
+                document.getElementById('api-health').style.color = '#28a745';
+            } catch (error) {
+                document.getElementById('api-health').textContent = '❌ Offline';
+                document.getElementById('api-health').style.color = '#dc3545';
+            }
+
+            try {
+                const response = await fetch(':8080/api/streams');
+                document.getElementById('streaming-health').textContent = '✅ Online';
+                document.getElementById('streaming-health').style.color = '#28a745';
+            } catch (error) {
+                document.getElementById('streaming-health').textContent = '❌ Offline';
+                document.getElementById('streaming-health').style.color = '#dc3545';
+            }
+        }
+
+        // JSMpeg Test Functions
+        async function startJSMpegTest() {
+            updateStatus('jsmpeg-status', 'Starting test stream...', 'info');
+            
+            try {
+                const response = await fetch(`/api/cameras/${testStreamId}/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rtspUrl: 'rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov'
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const wsUrl = result.streamInfo.jsmpeg.wsUrl.replace('localhost', window.location.hostname);
+                    
+                    setTimeout(() => {
+                        initJSMpegPlayer(wsUrl);
+                        updateStatus('jsmpeg-status', 'Stream started successfully! Connecting to WebSocket...', 'success');
+                    }, 2000);
+                } else {
+                    throw new Error('Failed to start stream');
+                }
+            } catch (error) {
+                updateStatus('jsmpeg-status', 'Error starting stream: ' + error.message, 'error');
+            }
+        }
+
+        function initJSMpegPlayer(wsUrl) {
+            const canvas = document.getElementById('jsmpeg-canvas');
+            const placeholder = document.getElementById('jsmpeg-placeholder');
+            
+            if (jsmpegPlayer) {
+                jsmpegPlayer.destroy();
+            }
+
+            try {
+                jsmpegPlayer = new JSMpeg.Player(wsUrl, {
+                    canvas: canvas,
+                    autoplay: true,
+                    audio: false,
+                    onPlay: () => {
+                        placeholder.style.display = 'none';
+                        canvas.style.display = 'block';
+                        updateStatus('jsmpeg-status', '🎥 JSMpeg stream is live! Low latency WebSocket streaming.', 'success');
+                    },
+                    onEnded: () => {
+                        updateStatus('jsmpeg-status', 'Stream ended', 'info');
+                    }
+                });
+            } catch (error) {
+                updateStatus('jsmpeg-status', 'Error initializing player: ' + error.message, 'error');
+            }
+        }
+
+        async function stopJSMpegTest() {
+            try {
+                await fetch(`/api/cameras/${testStreamId}/stream`, { method: 'DELETE' });
+                
+                if (jsmpegPlayer) {
+                    jsmpegPlayer.destroy();
+                    jsmpegPlayer = null;
+                }
+                
+                document.getElementById('jsmpeg-canvas').style.display = 'none';
+                document.getElementById('jsmpeg-placeholder').style.display = 'block';
+                document.getElementById('jsmpeg-placeholder').textContent = 'Stream stopped. Click "Start Test Stream" to begin again.';
+                
+                updateStatus('jsmpeg-status', 'Stream stopped successfully', 'info');
+            } catch (error) {
+                updateStatus('jsmpeg-status', 'Error stopping stream: ' + error.message, 'error');
+            }
+        }
+
+        // HLS Test Functions
+        async function startHLSTest() {
+            updateStatus('hls-status', 'Starting HLS test stream...', 'info');
+            
+            // Use the same test stream
+            setTimeout(() => {
+                const hlsUrl = `${window.location.protocol}//${window.location.host}/hls/${testStreamId}/${testStreamId}.m3u8`;
+                initHLSPlayer(hlsUrl);
+                updateStatus('hls-status', 'HLS stream started! Loading playlist...', 'success');
+            }, 3000); // Give JSMpeg stream time to start
+        }
+
+        function initHLSPlayer(hlsUrl) {
+            const video = document.getElementById('hls-video');
+            const placeholder = document.getElementById('hls-placeholder');
+            
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                video.src = hlsUrl;
+                video.addEventListener('loadedmetadata', () => {
+                    placeholder.style.display = 'none';
+                    video.style.display = 'block';
+                    updateStatus('hls-status', '📺 HLS stream is live! Universal HTTP streaming.', 'success');
+                });
+            } else if (Hls.isSupported()) {
+                // Use HLS.js
+                if (hlsPlayer) {
+                    hlsPlayer.destroy();
+                }
+                
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(hlsUrl);
+                hlsPlayer.attachMedia(video);
+                
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    placeholder.style.display = 'none';
+                    video.style.display = 'block';
+                    updateStatus('hls-status', '📺 HLS stream is live! Universal HTTP streaming.', 'success');
+                });
+                
+                hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    updateStatus('hls-status', 'HLS Error: ' + data.details, 'error');
+                });
+            } else {
+                updateStatus('hls-status', 'HLS is not supported in this browser', 'error');
+            }
+        }
+
+        async function stopHLSTest() {
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            
+            const video = document.getElementById('hls-video');
+            video.pause();
+            video.src = '';
+            video.style.display = 'none';
+            
+            document.getElementById('hls-placeholder').style.display = 'block';
+            document.getElementById('hls-placeholder').textContent = 'Stream stopped. Click "Start Test Stream" to begin again.';
+            
+            updateStatus('hls-status', 'HLS stream stopped', 'info');
+        }
+
+        // Utility Functions
+        async function checkStreams() {
+            try {
+                const response = await fetch(':8080/api/streams');
+                const streams = await response.json();
+                
+                const count = Object.keys(streams).length;
+                alert(`Active Streams: ${count}\n\n${JSON.stringify(streams, null, 2)}`);
+            } catch (error) {
+                alert('Error checking streams: ' + error.message);
+            }
+        }
+
+        async function checkHLSPlaylist() {
+            const hlsUrl = `/hls/${testStreamId}/${testStreamId}.m3u8`;
+            try {
+                const response = await fetch(hlsUrl);
+                const playlist = await response.text();
+                alert('HLS Playlist Content:\n\n' + playlist);
+            } catch (error) {
+                alert('Error checking HLS playlist: ' + error.message);
+            }
+        }
+
+        function updateStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+    </script>
+</body>
+</html>
